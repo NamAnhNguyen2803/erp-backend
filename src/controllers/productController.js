@@ -1,6 +1,6 @@
 const { Product } = require('../models');
 const { Op } = require('sequelize');
-
+//thành phẩm
 // Get all products with pagination and filters
 exports.getAllProducts = async (req, res) => {
   try {

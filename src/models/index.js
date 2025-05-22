@@ -1,10 +1,10 @@
 const sequelize = require('../config/database');
 
-const checkIndexes = async () => {
-  const indexes = await sequelize.queryInterface.showIndex('materials');
-  console.log('Indexes on materials:', indexes);
-};
-checkIndexes();
+// const checkIndexes = async () => {
+//   const indexes = await sequelize.queryInterface.showIndex('materials');
+//   console.log('Indexes on materials:', indexes);
+// };
+// checkIndexes();
 
 // Cấu hình toàn cục cho Sequelize
 const sequelizeOptions = {

@@ -20,10 +20,18 @@ exports.getAllInventory = async (req, res) => {
       include: [
         {
           model: Warehouse,
-          attributes: ['warehouse_id', 'code', 'name', 'type']
+          attributes: ['warehouse_id', 'code', 'name', 'location']
         }
       ],
-      attributes: ['inventory_id', 'item_id', 'item_type', 'warehouse_id', 'location', 'quantity', 'last_updated'],
+      attributes: [
+        'inventory_id',
+        'item_id',
+        'item_type',
+        'warehouse_id',
+        'location',
+        'quantity',
+        'last_updated'
+      ],
       order: [['inventory_id', 'DESC']]
     });
     
@@ -40,7 +48,10 @@ exports.getAllInventory = async (req, res) => {
               inventory.item_details = {
                 code: material.code,
                 name: material.name,
-                unit: material.unit
+                unit: material.unit,
+                specification: material.specification,
+                category: material.category,
+                supplier: material.supplier
               };
             }
           } else if (inventory.item_type === 'semi_product') {
@@ -49,7 +60,9 @@ exports.getAllInventory = async (req, res) => {
               inventory.item_details = {
                 code: semiProduct.code,
                 name: semiProduct.name,
-                unit: semiProduct.unit
+                unit: semiProduct.unit,
+                specification: semiProduct.specification,
+                category: 'Semi-Finished Product'
               };
             }
           } else if (inventory.item_type === 'product') {
@@ -58,7 +71,9 @@ exports.getAllInventory = async (req, res) => {
               inventory.item_details = {
                 code: product.code,
                 name: product.name,
-                unit: product.unit
+                unit: product.unit,
+                specification: product.specification,
+                category: 'Finished Product'
               };
             }
           }
@@ -90,7 +105,7 @@ exports.getInventoryById = async (req, res) => {
       include: [
         {
           model: Warehouse,
-          attributes: ['warehouse_id', 'code', 'name', 'type']
+          attributes: ['warehouse_id', 'code', 'name']
         }
       ]
     });
@@ -279,4 +294,4 @@ exports.updateInventory = async (req, res) => {
     console.error('Error updating inventory record:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
-}; 
+};

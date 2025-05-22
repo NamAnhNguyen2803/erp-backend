@@ -1,6 +1,7 @@
-const { WorkOrder, ManufactureOrder, ManufactureStep, WorkStation, SemiFinishedProduct, User, MaterialRequirement } = require('../models');
+const { WorkOrder, ManufactureOrder, ManufactureStep, WorkStation, SemiFinishedProduct, User, MaterialRequirement, BOM, Inventory, InventoryTransaction } = require('../models');
 const { Op } = require('sequelize');
 const sequelize = require('../config/database');
+const bomController = require('./bomController');
 
 // Get all work orders with pagination and filters
 exports.getAllWorkOrders = async (req, res) => {
@@ -269,6 +270,119 @@ exports.updateWorkOrder = async (req, res) => {
   } catch (error) {
     await t.rollback();
     console.error('Error updating work order:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Complete work order and transfer products
+exports.completeWorkOrder = async (req, res) => {
+  const t = await sequelize.transaction();
+  
+  try {
+    const { work_id } = req.params;
+    const { completed_quantity } = req.body;
+    
+    const workOrder = await WorkOrder.findByPk(work_id, {
+      include: [
+        {
+          model: ManufactureOrder,
+          include: [{ model: BOM }]
+        }
+      ]
+    });
+    
+    if (!workOrder) {
+      await t.rollback();
+      return res.status(404).json({ message: 'Work order not found' });
+    }
+    
+    // Deduct materials from BOM
+    await bomController.deductMaterialsFromBom(
+      workOrder.ManufactureOrder.BOM.bom_id,
+      completed_quantity,
+      t
+    );
+    
+    // Update work order status
+    workOrder.completed_quantity = completed_quantity;
+    workOrder.status = 'completed';
+    workOrder.end_time = new Date();
+    await workOrder.save({ transaction: t });
+    
+    // Add completed products to warehouse 2000
+    const inventory = await Inventory.findOne({
+      where: {
+        item_id: workOrder.semi_product_id || workOrder.ManufactureOrder.product_id,
+        item_type: workOrder.semi_product_id ? 'semi_product' : 'product',
+        warehouse_id: 2000
+      }
+    });
+    
+    if (inventory) {
+      inventory.quantity += completed_quantity;
+      await inventory.save({ transaction: t });
+    } else {
+      await Inventory.create({
+        item_id: workOrder.semi_product_id || workOrder.ManufactureOrder.product_id,
+        item_type: workOrder.semi_product_id ? 'semi_product' : 'product',
+        warehouse_id: 2000,
+        quantity: completed_quantity,
+        last_updated: new Date()
+      }, { transaction: t });
+    }
+    
+    // Create inventory transaction for warehouse 2000
+    await InventoryTransaction.create({
+      transaction_type: 'import',
+      item_id: workOrder.semi_product_id || workOrder.ManufactureOrder.product_id,
+      item_type: workOrder.semi_product_id ? 'semi_product' : 'product',
+      to_warehouse_id: 2000,
+      quantity: completed_quantity,
+      reference_id: work_id,
+      reference_type: 'work_order',
+      transaction_date: new Date()
+    }, { transaction: t });
+    
+    // Transfer to warehouse 3000
+    await InventoryTransaction.create({
+      transaction_type: 'transfer',
+      item_id: workOrder.semi_product_id || workOrder.ManufactureOrder.product_id,
+      item_type: workOrder.semi_product_id ? 'semi_product' : 'product',
+      from_warehouse_id: 2000,
+      to_warehouse_id: 3000,
+      quantity: completed_quantity,
+      reference_id: work_id,
+      reference_type: 'work_order',
+      transaction_date: new Date()
+    }, { transaction: t });
+    
+    // Update inventory in warehouse 3000
+    const inventory3000 = await Inventory.findOne({
+      where: {
+        item_id: workOrder.semi_product_id || workOrder.ManufactureOrder.product_id,
+        item_type: workOrder.semi_product_id ? 'semi_product' : 'product',
+        warehouse_id: 3000
+      }
+    });
+    
+    if (inventory3000) {
+      inventory3000.quantity += completed_quantity;
+      await inventory3000.save({ transaction: t });
+    } else {
+      await Inventory.create({
+        item_id: workOrder.semi_product_id || workOrder.ManufactureOrder.product_id,
+        item_type: workOrder.semi_product_id ? 'semi_product' : 'product',
+        warehouse_id: 3000,
+        quantity: completed_quantity,
+        last_updated: new Date()
+      }, { transaction: t });
+    }
+    
+    await t.commit();
+    return res.status(200).json({ message: 'Work order completed successfully' });
+  } catch (error) {
+    await t.rollback();
+    console.error('Error completing work order:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
 }; 

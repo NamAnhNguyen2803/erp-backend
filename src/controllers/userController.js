@@ -4,20 +4,20 @@ const { Op } = require('sequelize');
 // Get all users with pagination and filters
 exports.getAllUsers = async (req, res) => {
   try {
-    const { page = 1, limit = 10, role, status } = req.query;
+    const { page = 1, limit = 10, role, is_active } = req.query;
     const offset = (page - 1) * limit;
     
     // Build filter condition
     const where = {};
     if (role) where.role = role;
-    if (status) where.status = status;
+    if (is_active !== undefined) where.is_active = is_active === 'true';
     
     // Find users with pagination
     const { count, rows } = await User.findAndCountAll({
       where,
       limit: parseInt(limit),
       offset: parseInt(offset),
-      attributes: ['user_id', 'username', 'role', 'status'],
+      attributes: ['user_id', 'username', 'role', 'is_active'],
       order: [['user_id', 'DESC']]
     });
     
@@ -38,7 +38,7 @@ exports.getUserById = async (req, res) => {
   try {
     const { user_id } = req.params;
     const user = await User.findByPk(user_id, {
-      attributes: ['user_id', 'username', 'role', 'status']
+      attributes: ['user_id', 'username', 'role', 'is_active']
     });
     
     if (!user) {
@@ -55,7 +55,7 @@ exports.getUserById = async (req, res) => {
 // Create new user
 exports.createUser = async (req, res) => {
   try {
-    const { username, password, role, status } = req.body;
+    const { username, password, role, is_active } = req.body;
     
     // Check if username already exists
     const existingUser = await User.findOne({ where: { username } });
@@ -68,14 +68,14 @@ exports.createUser = async (req, res) => {
       username,
       password,
       role,
-      status
+      is_active
     });
     
     return res.status(201).json({
       user_id: newUser.user_id,
       username: newUser.username,
       role: newUser.role,
-      status: newUser.status
+      is_active: newUser.is_active
     });
   } catch (error) {
     console.error('Error creating user:', error);
@@ -87,7 +87,7 @@ exports.createUser = async (req, res) => {
 exports.updateUser = async (req, res) => {
   try {
     const { user_id } = req.params;
-    const { username, password, role, status } = req.body;
+    const { username, password, role, is_active } = req.body;
     
     // Find user by ID
     const user = await User.findByPk(user_id);
@@ -107,7 +107,7 @@ exports.updateUser = async (req, res) => {
     if (username) user.username = username;
     if (password) user.password = password;
     if (role) user.role = role;
-    if (status) user.status = status;
+    if (is_active !== undefined) user.is_active = is_active;
     
     await user.save();
     
@@ -115,7 +115,7 @@ exports.updateUser = async (req, res) => {
       user_id: user.user_id,
       username: user.username,
       role: user.role,
-      status: user.status
+      is_active: user.is_active
     });
   } catch (error) {
     console.error('Error updating user:', error);
@@ -134,9 +134,8 @@ exports.deleteUser = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
     
-    // Soft delete (change status to 'inactive')
-    // If you want hard delete, use: await user.destroy();
-    user.status = 'inactive';
+    // Soft delete (change is_active to false)
+    user.is_active = false;
     await user.save();
     
     return res.status(200).json({ message: 'User deleted' });

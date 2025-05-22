@@ -10,8 +10,7 @@ const ManufacturePlan = sequelize.define('ManufacturePlan', {
   },
   plan_code: {
     type: DataTypes.STRING(50),
-    allowNull: false,
-    unique: true
+    allowNull: false
   },
   description: {
     type: DataTypes.TEXT
@@ -35,13 +34,27 @@ const ManufacturePlan = sequelize.define('ManufacturePlan', {
       key: 'user_id'
     }
   },
-  created_at: {
-    type: DataTypes.DATE,
-    defaultValue: DataTypes.NOW
+  notes: {
+    type: DataTypes.TEXT
+  },
+  priority: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
+  },
+  is_active: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
   }
 }, {
   timestamps: true,
-  tableName: 'ManufacturingPlans'
+  tableName: 'ManufacturingPlans',
+  indexes: [
+    {
+      unique: true,
+      fields: ['plan_code'],
+      name: 'manufacturing_plans_plan_code_unique'
+    }
+  ]
 });
 
 module.exports = ManufacturePlan; 

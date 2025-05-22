@@ -1,4 +1,4 @@
-const { BOM, BOMItem, Product, User, Material, SemiFinishedProduct } = require('../models');
+const { BOM, BOMItem, Product, User, Material, SemiFinishedProduct, Inventory, InventoryTransaction } = require('../models');
 const { Op } = require('sequelize');
 const sequelize = require('../config/database');
 
@@ -280,5 +280,59 @@ exports.updateBom = async (req, res) => {
     await t.rollback();
     console.error('Error updating BOM:', error);
     return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// Deduct materials based on BOM when manufacturing
+exports.deductMaterialsFromBom = async (bom_id, quantity, t) => {
+  try {
+    const bom = await BOM.findByPk(bom_id, {
+      include: [{
+        model: BOMItem,
+        where: { is_active: true }
+      }]
+    });
+
+    if (!bom) {
+      throw new Error('BOM not found');
+    }
+
+    // Deduct each material in BOM
+    for (const item of bom.BOMItems) {
+      const deductQuantity = item.quantity * quantity;
+      
+      // Update inventory based on item type
+      const inventory = await Inventory.findOne({
+        where: {
+          item_id: item.material_id,
+          item_type: item.item_type,
+          warehouse_id: 2000 // Kho sản xuất
+        }
+      });
+
+      if (!inventory || inventory.quantity < deductQuantity) {
+        throw new Error(`Insufficient quantity for item ${item.material_id}`);
+      }
+
+      // Deduct quantity
+      inventory.quantity -= deductQuantity;
+      await inventory.save({ transaction: t });
+
+      // Create inventory transaction record
+      await InventoryTransaction.create({
+        transaction_type: 'export',
+        item_id: item.material_id,
+        item_type: item.item_type,
+        from_warehouse_id: 2000,
+        quantity: deductQuantity,
+        reference_id: bom.bom_id,
+        reference_type: 'bom',
+        transaction_date: new Date()
+      }, { transaction: t });
+    }
+
+    return true;
+  } catch (error) {
+    throw error;
   }
 }; 

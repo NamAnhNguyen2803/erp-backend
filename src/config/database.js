@@ -5,7 +5,7 @@ require('dotenv').config();
 const database = process.env.DB_NAME || 'erp_db';
 const username = process.env.DB_USER || 'root';
 const password = process.env.DB_PASSWORD || '';
-const host = process.env.DB_HOST || 'localhost';
+const host = process.env.DB_HOST || '127.0.0.1';
 const port = process.env.DB_PORT || 3306;
 
 // Cấu hình pool cho kết nối database

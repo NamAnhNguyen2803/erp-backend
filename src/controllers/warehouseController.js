@@ -4,12 +4,11 @@ const { Op } = require('sequelize');
 // Get all warehouses with pagination and filters
 exports.getAllWarehouses = async (req, res) => {
   try {
-    const { page = 1, limit = 10, type, status } = req.query;
+    const { page = 1, limit = 10, status } = req.query;
     const offset = (page - 1) * limit;
     
     // Build filter condition
     const where = {};
-    if (type) where.type = type;
     if (status) where.status = status;
     
     // Find warehouses with pagination
@@ -17,7 +16,7 @@ exports.getAllWarehouses = async (req, res) => {
       where,
       limit: parseInt(limit),
       offset: parseInt(offset),
-      attributes: ['warehouse_id', 'code', 'name', 'type', 'capacity', 'capacity_unit', 'status'],
+      attributes: ['warehouse_id', 'code', 'name', 'capacity', 'capacity_unit', 'status'],
       order: [['warehouse_id', 'DESC']]
     });
     
@@ -53,7 +52,7 @@ exports.getWarehouseById = async (req, res) => {
 // Create new warehouse
 exports.createWarehouse = async (req, res) => {
   try {
-    const { code, name, type, capacity, capacity_unit, status } = req.body;
+    const { code, name, capacity, capacity_unit, status } = req.body;
     
     // Check if code already exists
     const existingWarehouse = await Warehouse.findOne({ where: { code } });
@@ -65,7 +64,6 @@ exports.createWarehouse = async (req, res) => {
     const newWarehouse = await Warehouse.create({
       code,
       name,
-      type,
       capacity,
       capacity_unit,
       status
@@ -82,7 +80,7 @@ exports.createWarehouse = async (req, res) => {
 exports.updateWarehouse = async (req, res) => {
   try {
     const { warehouse_id } = req.params;
-    const { code, name, type, capacity, capacity_unit, status } = req.body;
+    const { code, name, capacity, capacity_unit, status } = req.body;
     
     // Find warehouse by ID
     const warehouse = await Warehouse.findByPk(warehouse_id);
@@ -102,7 +100,6 @@ exports.updateWarehouse = async (req, res) => {
     await warehouse.update({
       code: code || warehouse.code,
       name: name || warehouse.name,
-      type: type || warehouse.type,
       capacity: capacity !== undefined ? capacity : warehouse.capacity,
       capacity_unit: capacity_unit || warehouse.capacity_unit,
       status: status || warehouse.status
@@ -135,4 +132,4 @@ exports.deleteWarehouse = async (req, res) => {
     console.error('Error deleting warehouse:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
-}; 
+};
