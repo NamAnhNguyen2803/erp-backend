@@ -1,12 +1,5 @@
 const sequelize = require('../config/database');
 
-// const checkIndexes = async () => {
-//   const indexes = await sequelize.queryInterface.showIndex('materials');
-//   console.log('Indexes on materials:', indexes);
-// };
-// checkIndexes();
-
-// Cấu hình toàn cục cho Sequelize
 const sequelizeOptions = {
   define: {
     freezeTableName: true,
@@ -37,6 +30,9 @@ const ManufactureStep = require('./ManufactureStep');
 const WorkOrder = require('./WorkOrder');
 const MaterialRequirement = require('./MaterialRequirement');
 const InventoryTransaction = require('./InventoryTransaction');
+const ProductInventory = require('./ProductInventory');
+const MaterialInventory = require('./MaterialInventory');
+const SemiProductInventory = require('./SemiProductInventory');
 const ManufactureCost = require('./ManufactureCost');
 const ManufactureLog = require('./ManufactureLog');
 
@@ -44,7 +40,7 @@ const ManufactureLog = require('./ManufactureLog');
 const defineAssociations = () => {
   try {
     console.log('Defining model associations...');
-    
+
     // BOM relationships
     BOM.belongsTo(Product, { foreignKey: 'product_id' });
     Product.hasMany(BOM, { foreignKey: 'product_id' });
@@ -98,14 +94,33 @@ const defineAssociations = () => {
     // Inventory relationships
     Inventory.belongsTo(Warehouse, { foreignKey: 'warehouse_id' });
     Warehouse.hasMany(Inventory, { foreignKey: 'warehouse_id' });
+
+
+    // Product Inventory relationships  
+    Product.hasMany(ProductInventory, { foreignKey: 'product_id', as: 'ProductInventories' });
+    ProductInventory.belongsTo(Product, { foreignKey: 'product_id', as: 'product' });
     
+    ProductInventory.belongsTo(Warehouse, { foreignKey: 'warehouse_id', as: 'Warehouse' });
+    Warehouse.hasMany(ProductInventory, { foreignKey: 'warehouse_id', as: 'ProductInventories' }); 
+
+    // Material Inventory relationships
+    Material.hasMany(MaterialInventory, { foreignKey: 'material_id' });
+    MaterialInventory.belongsTo(Material, { foreignKey: 'material_id' });
+    MaterialInventory.belongsTo(Warehouse, { foreignKey: 'warehouse_id' });
+    Warehouse.hasMany(MaterialInventory, { foreignKey: 'warehouse_id' });
+
+    // Semi Product Inventory relationships
+    SemiFinishedProduct.hasMany(SemiProductInventory, { foreignKey: 'semi_product_id' });
+    SemiProductInventory.belongsTo(SemiFinishedProduct, { foreignKey: 'semi_product_id' });
+    SemiProductInventory.belongsTo(Warehouse, { foreignKey: 'warehouse_id' });
+    Warehouse.hasMany(SemiProductInventory, { foreignKey: 'warehouse_id' });
     // InventoryTransaction relationships
     InventoryTransaction.belongsTo(Warehouse, { foreignKey: 'from_warehouse_id', as: 'FromWarehouse' });
     Warehouse.hasMany(InventoryTransaction, { foreignKey: 'from_warehouse_id', as: 'OutgoingTransactions' });
-    
+
     InventoryTransaction.belongsTo(Warehouse, { foreignKey: 'to_warehouse_id', as: 'ToWarehouse' });
     Warehouse.hasMany(InventoryTransaction, { foreignKey: 'to_warehouse_id', as: 'IncomingTransactions' });
-    
+
     InventoryTransaction.belongsTo(User, { foreignKey: 'created_by', as: 'CreatedByUser' });
     User.hasMany(InventoryTransaction, { foreignKey: 'created_by', as: 'CreatedTransactions' });
 
@@ -120,7 +135,7 @@ const defineAssociations = () => {
     WorkOrder.hasMany(ManufactureLog, { foreignKey: 'work_id' });
     ManufactureLog.belongsTo(User, { foreignKey: 'created_by', as: 'CreatedByUser' });
     User.hasMany(ManufactureLog, { foreignKey: 'created_by' });
-    
+
     console.log('Model associations defined successfully');
   } catch (error) {
     console.error('Error defining associations:', error);
@@ -134,12 +149,13 @@ defineAssociations();
 const syncDatabase = async () => {
   try {
     // Thiết lập các tùy chọn đồng bộ cơ sở dữ liệu
-    const syncOptions = {
-      alter: true,
-    };
-    
-    console.log('Starting database synchronization with options:', syncOptions);
-    await sequelize.sync(syncOptions);
+    // const syncOptions = {
+    //   alter: true,
+    // };
+
+    // console.log('Starting database synchronization with options:', syncOptions);
+
+    await sequelize.sync();
     console.log('Database synchronized successfully');
   } catch (error) {
     console.error('Error synchronizing database:', error);
@@ -167,5 +183,8 @@ module.exports = {
   MaterialRequirement,
   InventoryTransaction,
   ManufactureCost,
-  ManufactureLog
+  ManufactureLog,
+  ProductInventory,
+  MaterialInventory,
+  SemiProductInventory
 }; 

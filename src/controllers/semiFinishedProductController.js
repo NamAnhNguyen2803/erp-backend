@@ -25,7 +25,7 @@ exports.getAllSemiFinishedProducts = async (req, res) => {
       limit: parseInt(limit),
       offset: parseInt(offset),
       // Loại bỏ 'phase' khỏi danh sách attributes
-      attributes: ['semi_product_id', 'code', 'name', 'unit', 'specification', 'current_stock', 'status'], // Đảm bảo các trường này có trong model của bạn
+      attributes: ['semi_product_id', 'code', 'name', 'unit', 'specification',  'status'], // Đảm bảo các trường này có trong model của bạn
       order: [['semi_product_id', 'DESC']]
     });
 
@@ -76,7 +76,6 @@ exports.createSemiFinishedProduct = async (req, res) => {
       name,
       unit,
       specification,
-      current_stock: 0, // Khởi tạo với 0 stock
     });
 
     return res.status(201).json(newSemiProduct);
@@ -91,7 +90,7 @@ exports.updateSemiFinishedProduct = async (req, res) => {
   try {
     const { semi_product_id } = req.params;
     // Loại bỏ 'phase' khỏi req.body
-    const { code, name, unit, specification, current_stock } = req.body;
+    const { code, name, unit, specification } = req.body;
 
     // Tìm sản phẩm bán thành phẩm theo ID
     const semiProduct = await SemiFinishedProduct.findByPk(semi_product_id);
@@ -113,7 +112,6 @@ exports.updateSemiFinishedProduct = async (req, res) => {
       name: name || semiProduct.name,
       unit: unit || semiProduct.unit,
       specification: specification !== undefined ? specification : semiProduct.specification,
-      current_stock: current_stock !== undefined ? current_stock : semiProduct.current_stock,
       // Loại bỏ 'phase' khỏi đây
     });
 

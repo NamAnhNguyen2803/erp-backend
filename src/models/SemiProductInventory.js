@@ -1,0 +1,61 @@
+const { Model, DataTypes } = require('sequelize');
+const sequelize = require('../config/database');
+
+class SemiProductInventory extends Model {}
+
+SemiProductInventory.init({
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  semi_product_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'semi_finished_products',
+      key: 'id'
+    }
+  },
+  warehouse_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'warehouses',
+      key: 'id'
+    }
+  },
+  quantity: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    defaultValue: 0
+  },
+  unit: {
+    type: DataTypes.STRING(20),
+    allowNull: false
+  },
+  created_at: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW
+  },
+  updated_at: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW
+  }
+}, {
+  sequelize,
+  modelName: 'SemiProductInventory',
+  tableName: 'semi_product_inventory',
+  timestamps: true,
+  underscored: true,
+  indexes: [
+    {
+      unique: true,
+      fields: ['semi_product_id', 'warehouse_id']
+    }
+  ]
+});
+
+module.exports = SemiProductInventory; 

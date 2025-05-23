@@ -35,10 +35,6 @@ const Product = sequelize.define('Product', {
     type: DataTypes.DECIMAL(10, 2),
     field: 'max_stock'
   },
-  current_stock: {
-    type: DataTypes.DECIMAL(10, 2),
-    field: 'current_stock'
-  },
   cost_price: {
     type: DataTypes.DECIMAL(15, 2),
     field: 'cost_price'

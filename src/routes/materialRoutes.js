@@ -3,6 +3,7 @@ const router = express.Router();
 const materialController = require('../controllers/materialController');
 // Comment tạm thời middleware xác thực
 // const { authenticateUser, authorizeManager } = require('../middleware/authMiddleware');
+console.log('Loaded controller:', materialController);
 
 // GET /api/v1/materials - Get all materials
 router.get('/', materialController.getAllMaterials);

@@ -24,7 +24,7 @@ exports.getAllMaterials = async (req, res) => {
       where,
       limit: parseInt(limit),
       offset: parseInt(offset),
-      attributes: ['material_id', 'code', 'name', 'unit', 'current_stock', 'unit_price', 'status', 'supplier'],
+      attributes: ['material_id', 'code', 'name', 'unit',  'unit_price', 'status', 'supplier'],
       order: [['material_id', 'DESC']]
     });
 
@@ -75,8 +75,7 @@ exports.createMaterial = async (req, res) => {
       unit,
       specification,
       min_stock,
-      max_stock,
-      current_stock: 0, // Initialize with 0 stock
+      max_stock,// Initialize with 0 stock
       unit_price,
       supplier,
       status
@@ -93,7 +92,7 @@ exports.createMaterial = async (req, res) => {
 exports.updateMaterial = async (req, res) => {
   try {
     const { material_id } = req.params;
-    const { code, name, unit, specification, min_stock, max_stock, current_stock, unit_price, supplier, status } = req.body;
+    const { code, name, unit, specification, min_stock, max_stock,  unit_price, supplier, status } = req.body;
 
     // Find material by ID
     const material = await Material.findByPk(material_id);
@@ -117,7 +116,6 @@ exports.updateMaterial = async (req, res) => {
       specification: specification !== undefined ? specification : material.specification,
       min_stock: min_stock !== undefined ? min_stock : material.min_stock,
       max_stock: max_stock !== undefined ? max_stock : material.max_stock,
-      current_stock: current_stock !== undefined ? current_stock : material.current_stock,
       unit_price: unit_price !== undefined ? unit_price : material.unit_price,
       supplier: supplier !== undefined ? supplier : material.supplier,
       status: status || material.status
