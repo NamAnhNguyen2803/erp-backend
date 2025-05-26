@@ -11,8 +11,6 @@ exports.getAllBoms = async (req, res) => {
     // Build filter condition
     const where = {};
     if (product_id) where.product_id = product_id;
-    if (status === 'active') where.is_active = true;
-    else if (status === 'inactive') where.is_active = false;
     
     // Find BOMs with pagination
     const { count, rows } = await BOM.findAndCountAll({
@@ -130,7 +128,7 @@ exports.createBom = async (req, res) => {
   const t = await sequelize.transaction();
   
   try {
-    const { product_id, version, description, is_active, created_by, notes, items } = req.body;
+    const { product_id, version, description, created_by, notes, items } = req.body;
     
     // Validate product_id
     const product = await Product.findByPk(product_id);
@@ -163,7 +161,7 @@ exports.createBom = async (req, res) => {
     const newBom = await BOM.create({
       product_id,
       version,
-      is_active: is_active !== undefined ? is_active : true,
+
       created_by,
       notes
     }, { transaction: t });
@@ -209,7 +207,7 @@ exports.updateBom = async (req, res) => {
   
   try {
     const { bom_id } = req.params;
-    const { version, description, is_active, notes, items } = req.body;
+    const { version, description, notes, items } = req.body;
     
     // Find BOM by ID
     const bom = await BOM.findByPk(bom_id);
@@ -237,7 +235,6 @@ exports.updateBom = async (req, res) => {
     // Update BOM fields
     await bom.update({
       version: version || bom.version,
-      is_active: is_active !== undefined ? is_active : bom.is_active,
       notes: notes !== undefined ? notes : bom.notes
     }, { transaction: t });
     
@@ -289,7 +286,7 @@ exports.deductMaterialsFromBom = async (bom_id, quantity, t) => {
     const bom = await BOM.findByPk(bom_id, {
       include: [{
         model: BOMItem,
-        where: { is_active: true }
+        where: {  }
       }]
     });
 

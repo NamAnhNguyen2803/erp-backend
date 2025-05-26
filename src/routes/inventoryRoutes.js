@@ -6,14 +6,10 @@ const inventoryController = require('../controllers/inventoryController');
 
 // GET /api/v1/inventory - Get all inventory
 router.get('/', inventoryController.getAllInventory);
+router.get('/materials', inventoryController.getInventoryByMaterial);
+router.get('/products', inventoryController.getInventoryByProduct);
+router.get('/semi-products', inventoryController.getInventoryBySemiProduct);
+router.get('/warehouse/:warehouseId',  inventoryController.getInventoryByWarehouse);
 
-// GET /api/v1/inventory/:inventory_id - Get inventory by ID
-router.get('/:inventory_id', inventoryController.getInventoryById);
 
-// POST /api/v1/inventory - Create a new inventory record
-router.post('/', inventoryController.createInventory);
-
-// PUT /api/v1/inventory/:inventory_id - Update inventory
-router.put('/:inventory_id', inventoryController.updateInventory);
-
-module.exports = router; 
+module.exports = router;    

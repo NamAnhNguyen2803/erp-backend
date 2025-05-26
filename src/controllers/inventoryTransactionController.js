@@ -1,6 +1,328 @@
-const { InventoryTransaction, Warehouse, Material, Product, SemiFinishedProduct, Inventory, User } = require('../models');
+const { 
+  InventoryTransaction, 
+  Warehouse, 
+  Material, 
+  Product, 
+  SemiFinishedProduct, 
+  ProductInventory,
+  MaterialInventory,
+  SemiProductInventory,
+  User 
+} = require('../models');
 const { Op } = require('sequelize');
 const sequelize = require('../config/database');
+
+// Helper function to get inventory model based on item type
+const getInventoryModel = (itemType) => {
+  switch (itemType) {
+    case 'material': return MaterialInventory;
+    case 'product': return ProductInventory;
+    case 'semi_product': return SemiProductInventory;
+    default: throw new Error('Invalid item type');
+  }
+};
+
+// Helper function to get item field name based on type
+const getItemFieldName = (itemType) => {
+  switch (itemType) {
+    case 'material': return 'material_id';
+    case 'product': return 'product_id';
+    case 'semi_product': return 'semi_product_id';
+    default: throw new Error('Invalid item type');
+  }
+};
+
+// Import goods to warehouse
+exports.importGoods = async (req, res) => {
+  const t = await sequelize.transaction();
+  
+  try {
+    const { 
+      item_id, 
+      item_type, 
+      to_warehouse_id, 
+      quantity, 
+      reference_id, 
+      reference_type,
+      description
+    } = req.body;
+    
+    if (!item_id || !item_type || !to_warehouse_id || !quantity) {
+      await t.rollback();
+      return res.status(400).json({ 
+        message: 'item_id, item_type, to_warehouse_id và quantity là bắt buộc' 
+      });
+    }
+    
+    // Validate item exist
+    let item;
+    if (item_type === 'material') {
+      item = await Material.findByPk(item_id);
+    } else if (item_type === 'product') {
+      item = await Product.findByPk(item_id);
+    } else if (item_type === 'semi_product') {
+      item = await SemiFinishedProduct.findByPk(item_id);
+    }
+    
+    if (!item) {
+      await t.rollback();
+      return res.status(400).json({ message: 'Không tìm thấy item' });
+    }
+    
+    // Validate warehouse
+    const warehouse = await Warehouse.findByPk(to_warehouse_id);
+    if (!warehouse) {
+      await t.rollback();
+      return res.status(400).json({ message: 'Không tìm thấy kho' });
+    }
+    
+    // Create import transaction
+    const transaction = await InventoryTransaction.create({
+      from_warehouse_id: null,
+      to_warehouse_id,
+      item_id,
+      item_type,
+      quantity,
+      unit: item.unit,
+      transaction_date: new Date(),
+      transaction_type: 'import',
+      reference_id,
+      reference_type,
+      description,
+      created_by: req.user ? req.user.user_id : null
+    }, { transaction: t });
+    
+    // Update inventory
+    const InventoryModel = getInventoryModel(item_type);
+    const itemField = getItemFieldName(item_type);
+    
+    const [inventory] = await InventoryModel.findOrCreate({
+      where: {
+        warehouse_id: to_warehouse_id,
+        [itemField]: item_id
+      },
+      defaults: {
+        quantity: 0,
+        unit: item.unit
+      },
+      transaction: t
+    });
+    
+    await inventory.increment('quantity', { 
+      by: quantity,
+      transaction: t 
+    });
+    
+    await t.commit();
+    
+    return res.status(201).json({
+      message: 'Nhập kho thành công',
+      transaction_id: transaction.transaction_id
+    });
+  } catch (error) {
+    await t.rollback();
+    console.error('Error importing goods:', error);
+    return res.status(500).json({ message: 'Lỗi server' });
+  }
+};
+
+// Export goods from warehouse
+exports.exportGoods = async (req, res) => {
+  const t = await sequelize.transaction();
+  
+  try {
+    const { 
+      item_id, 
+      item_type, 
+      from_warehouse_id, 
+      quantity, 
+      reference_id, 
+      reference_type,
+      description
+    } = req.body;
+    
+    if (!item_id || !item_type || !from_warehouse_id || !quantity) {
+      await t.rollback();
+      return res.status(400).json({ 
+        message: 'item_id, item_type, from_warehouse_id và quantity là bắt buộc' 
+      });
+    }
+    
+    // Check inventory availability
+    const InventoryModel = getInventoryModel(item_type);
+    const itemField = getItemFieldName(item_type);
+    
+    const inventory = await InventoryModel.findOne({
+      where: {
+        [itemField]: item_id,
+        warehouse_id: from_warehouse_id
+      }
+    });
+    
+    if (!inventory || inventory.quantity < quantity) {
+      await t.rollback();
+      return res.status(400).json({ 
+        message: 'Không đủ hàng trong kho',
+        available: inventory ? inventory.quantity : 0,
+        requested: quantity
+      });
+    }
+    
+    // Get item for unit info
+    let item;
+    if (item_type === 'material') {
+      item = await Material.findByPk(item_id);
+    } else if (item_type === 'product') {
+      item = await Product.findByPk(item_id);
+    } else if (item_type === 'semi_product') {
+      item = await SemiFinishedProduct.findByPk(item_id);
+    }
+    
+    // Create export transaction
+    const transaction = await InventoryTransaction.create({
+      from_warehouse_id,
+      to_warehouse_id: null,
+      item_id,
+      item_type,
+      quantity,
+      unit: item.unit,
+      transaction_date: new Date(),
+      transaction_type: 'export',
+      reference_id,
+      reference_type,
+      description,
+      created_by: req.user ? req.user.user_id : null
+    }, { transaction: t });
+    
+    // Update inventory
+    await inventory.decrement('quantity', { 
+      by: quantity,
+      transaction: t 
+    });
+    
+    await t.commit();
+    
+    return res.status(201).json({
+      message: 'Xuất kho thành công',
+      transaction_id: transaction.transaction_id
+    });
+  } catch (error) {
+    await t.rollback();
+    console.error('Error exporting goods:', error);
+    return res.status(500).json({ message: 'Lỗi server' });
+  }
+};
+
+// Transfer goods between warehouses
+exports.transferGoods = async (req, res) => {
+  const t = await sequelize.transaction();
+  
+  try {
+    const { 
+      item_id, 
+      item_type, 
+      from_warehouse_id, 
+      to_warehouse_id,
+      quantity, 
+      reference_id, 
+      reference_type,
+      description
+    } = req.body;
+    
+    if (!item_id || !item_type || !from_warehouse_id || !to_warehouse_id || !quantity) {
+      await t.rollback();
+      return res.status(400).json({ 
+        message: 'Tất cả các trường là bắt buộc' 
+      });
+    }
+    
+    if (from_warehouse_id === to_warehouse_id) {
+      await t.rollback();
+      return res.status(400).json({ message: 'Kho nguồn và kho đích không được giống nhau' });
+    }
+    
+    const InventoryModel = getInventoryModel(item_type);
+    const itemField = getItemFieldName(item_type);
+    
+    // Check inventory availability
+    const fromInventory = await InventoryModel.findOne({
+      where: {
+        [itemField]: item_id,
+        warehouse_id: from_warehouse_id
+      }
+    });
+    
+    if (!fromInventory || fromInventory.quantity < quantity) {
+      await t.rollback();
+      return res.status(400).json({ 
+        message: 'Không đủ hàng trong kho nguồn',
+        available: fromInventory ? fromInventory.quantity : 0,
+        requested: quantity
+      });
+    }
+    
+    // Get item for unit info
+    let item;
+    if (item_type === 'material') {
+      item = await Material.findByPk(item_id);
+    } else if (item_type === 'product') {
+      item = await Product.findByPk(item_id);
+    } else if (item_type === 'semi_product') {
+      item = await SemiFinishedProduct.findByPk(item_id);
+    }
+    
+    // Create transfer transaction
+    const transaction = await InventoryTransaction.create({
+      from_warehouse_id,
+      to_warehouse_id,
+      item_id,
+      item_type,
+      quantity,
+      unit: item.unit,
+      transaction_date: new Date(),
+      transaction_type: 'transfer',
+      reference_id,
+      reference_type,
+      description,
+      created_by: req.user ? req.user.user_id : null
+    }, { transaction: t });
+    
+    // Update source inventory
+    await fromInventory.decrement('quantity', { 
+      by: quantity,
+      transaction: t 
+    });
+    
+    // Update destination inventory
+    const [toInventory] = await InventoryModel.findOrCreate({
+      where: {
+        warehouse_id: to_warehouse_id,
+        [itemField]: item_id
+      },
+      defaults: {
+        quantity: 0,
+        unit: item.unit
+      },
+      transaction: t
+    });
+    
+    await toInventory.increment('quantity', { 
+      by: quantity,
+      transaction: t 
+    });
+    
+    await t.commit();
+    
+    return res.status(201).json({
+      message: 'Chuyển kho thành công',
+      transaction_id: transaction.transaction_id
+    });
+  } catch (error) {
+    await t.rollback();
+    console.error('Error transferring goods:', error);
+    return res.status(500).json({ message: 'Lỗi server' });
+  }
+};
 
 // Get all inventory transactions with pagination and filters
 exports.getAllInventoryTransactions = async (req, res) => {
@@ -19,7 +341,6 @@ exports.getAllInventoryTransactions = async (req, res) => {
       ];
     }
     
-    // Find inventory transactions with pagination
     const { count, rows } = await InventoryTransaction.findAndCountAll({
       where,
       limit: parseInt(limit),
@@ -67,7 +388,7 @@ exports.getAllInventoryTransactions = async (req, res) => {
             unit: product.unit
           };
         }
-      } else if (transaction.item_type === 'semi_finished') {
+      } else if (transaction.item_type === 'semi_product') {
         const semiProduct = await SemiFinishedProduct.findByPk(transaction.item_id);
         if (semiProduct) {
           transactionObj.item_details = {
@@ -89,157 +410,16 @@ exports.getAllInventoryTransactions = async (req, res) => {
     });
   } catch (error) {
     console.error('Error getting inventory transactions:', error);
-    return res.status(500).json({ message: 'Internal server error' });
+    return res.status(500).json({ message: 'Lỗi server' });
   }
 };
 
-// Create new inventory transaction
-exports.createInventoryTransaction = async (req, res) => {
-  // Transaction to ensure data consistency
-  const t = await sequelize.transaction();
-  
+// Get transaction by ID
+exports.getTransactionById = async (req, res) => {
   try {
-    const { 
-      transaction_type, 
-      item_id, 
-      item_type, 
-      from_warehouse_id, 
-      to_warehouse_id, 
-      quantity, 
-      reference_id, 
-      reference_type 
-    } = req.body;
+    const { id } = req.params;
     
-    // Validate transaction_type
-    const validTransactionTypes = ['import', 'export', 'transfer'];
-    if (!validTransactionTypes.includes(transaction_type)) {
-      await t.rollback();
-      return res.status(400).json({ message: 'Invalid transaction_type. Must be import, export, or transfer' });
-    }
-    
-    // Validate item_type
-    const validItemTypes = ['material', 'product', 'semi_finished'];
-    if (!validItemTypes.includes(item_type)) {
-      await t.rollback();
-      return res.status(400).json({ message: 'Invalid item_type. Must be material, product, or semi_finished' });
-    }
-    
-    // Validate item_id based on item_type
-    let item;
-    if (item_type === 'material') {
-      item = await Material.findByPk(item_id);
-    } else if (item_type === 'product') {
-      item = await Product.findByPk(item_id);
-    } else if (item_type === 'semi_finished') {
-      item = await SemiFinishedProduct.findByPk(item_id);
-    }
-    
-    if (!item) {
-      await t.rollback();
-      return res.status(400).json({ message: `Invalid item_id for the specified item_type` });
-    }
-    
-    // Validate warehouses based on transaction_type
-    if (transaction_type === 'import' || transaction_type === 'transfer') {
-      if (!to_warehouse_id) {
-        await t.rollback();
-        return res.status(400).json({ message: 'to_warehouse_id is required for import or transfer transactions' });
-      }
-      
-      const toWarehouse = await Warehouse.findByPk(to_warehouse_id);
-      if (!toWarehouse) {
-        await t.rollback();
-        return res.status(400).json({ message: 'Invalid to_warehouse_id' });
-      }
-    }
-    
-    if (transaction_type === 'export' || transaction_type === 'transfer') {
-      if (!from_warehouse_id) {
-        await t.rollback();
-        return res.status(400).json({ message: 'from_warehouse_id is required for export or transfer transactions' });
-      }
-      
-      const fromWarehouse = await Warehouse.findByPk(from_warehouse_id);
-      if (!fromWarehouse) {
-        await t.rollback();
-        return res.status(400).json({ message: 'Invalid from_warehouse_id' });
-      }
-      
-      // Check inventory quantity if it's an export or transfer
-      const inventory = await Inventory.findOne({
-        where: {
-          item_id,
-          item_type,
-          warehouse_id: from_warehouse_id
-        }
-      });
-      
-      if (!inventory || inventory.quantity < quantity) {
-        await t.rollback();
-        return res.status(400).json({ 
-          message: 'Insufficient inventory quantity',
-          available: inventory ? inventory.quantity : 0,
-          requested: quantity
-        });
-      }
-    }
-    
-    // Create the inventory transaction
-    const newTransaction = await InventoryTransaction.create({
-      transaction_type,
-      item_id,
-      item_type,
-      from_warehouse_id: transaction_type === 'import' ? null : from_warehouse_id,
-      to_warehouse_id: transaction_type === 'export' ? null : to_warehouse_id,
-      quantity,
-      transaction_date: new Date(),
-      reference_id,
-      reference_type,
-      created_by: req.user ? req.user.user_id : null
-    }, { transaction: t });
-    
-    // Update inventory quantities based on transaction type
-    if (transaction_type === 'import' || transaction_type === 'transfer') {
-      // Increase inventory in destination warehouse
-      const [toInventory] = await Inventory.findOrCreate({
-        where: {
-          warehouse_id: to_warehouse_id,
-          item_id,
-          item_type
-        },
-        defaults: {
-          quantity: 0
-        },
-        transaction: t
-      });
-      
-      await toInventory.increment('quantity', { 
-        by: quantity,
-        transaction: t 
-      });
-    }
-    
-    if (transaction_type === 'export' || transaction_type === 'transfer') {
-      // Decrease inventory in source warehouse
-      const fromInventory = await Inventory.findOne({
-        where: {
-          warehouse_id: from_warehouse_id,
-          item_id,
-          item_type
-        },
-        transaction: t
-      });
-      
-      await fromInventory.decrement('quantity', { 
-        by: quantity,
-        transaction: t 
-      });
-    }
-    
-    await t.commit();
-    
-    // Get the created transaction with related details
-    const transaction = await InventoryTransaction.findByPk(newTransaction.transaction_id, {
+    const transaction = await InventoryTransaction.findByPk(id, {
       include: [
         {
           model: Warehouse,
@@ -259,38 +439,106 @@ exports.createInventoryTransaction = async (req, res) => {
       ]
     });
     
-    // Get item details
-    let itemDetails = null;
-    if (item_type === 'material') {
-      const material = await Material.findByPk(item_id);
-      itemDetails = {
-        code: material.code,
-        name: material.name,
-        unit: material.unit
-      };
-    } else if (item_type === 'product') {
-      const product = await Product.findByPk(item_id);
-      itemDetails = {
-        code: product.code,
-        name: product.name,
-        unit: product.unit
-      };
-    } else if (item_type === 'semi_finished') {
-      const semiProduct = await SemiFinishedProduct.findByPk(item_id);
-      itemDetails = {
-        code: semiProduct.code,
-        name: semiProduct.name,
-        unit: semiProduct.unit
-      };
+    if (!transaction) {
+      return res.status(404).json({ message: 'Không tìm thấy giao dịch' });
     }
     
-    const result = transaction.toJSON();
-    result.item_details = itemDetails;
+    // Get item details
+    const transactionObj = transaction.toJSON();
     
-    return res.status(201).json(result);
+    if (transaction.item_type === 'material') {
+      const material = await Material.findByPk(transaction.item_id);
+      if (material) {
+        transactionObj.item_details = {
+          code: material.code,
+          name: material.name,
+          unit: material.unit
+        };
+      }
+    } else if (transaction.item_type === 'product') {
+      const product = await Product.findByPk(transaction.item_id);
+      if (product) {
+        transactionObj.item_details = {
+          code: product.code,
+          name: product.name,
+          unit: product.unit
+        };
+      }
+    } else if (transaction.item_type === 'semi_product') {
+      const semiProduct = await SemiFinishedProduct.findByPk(transaction.item_id);
+      if (semiProduct) {
+        transactionObj.item_details = {
+          code: semiProduct.code,
+          name: semiProduct.name,
+          unit: semiProduct.unit
+        };
+      }
+    }
+    
+    return res.status(200).json(transactionObj);
   } catch (error) {
-    await t.rollback();
-    console.error('Error creating inventory transaction:', error);
-    return res.status(500).json({ message: 'Internal server error' });
+    console.error('Error getting transaction:', error);
+    return res.status(500).json({ message: 'Lỗi server' });
   }
-}; 
+};
+exports.getInventorySummary = async (req, res) => {
+  try {
+    const { warehouse_id, item_type } = req.query;
+
+    const inventoryTypes = [
+      {
+        key: 'material',
+        model: MaterialInventory,
+        itemKey: 'material',
+        includeModels: [
+          { model: Warehouse, attributes: ['warehouse_id', 'code', 'name'] },
+          { model: Material, attributes: ['material_id', 'code', 'name', 'unit'] }
+        ]
+      },
+      {
+        key: 'product',
+        model: ProductInventory,
+        itemKey: 'product',
+        includeModels: [
+          { model: Warehouse, as: 'warehouse', attributes: ['warehouse_id', 'code', 'name'] },
+          { model: Product, as: 'product', attributes: ['product_id', 'code', 'name', 'unit'] }
+        ]
+      },      
+      {
+        key: 'semi_product',
+        model: SemiProductInventory,
+        itemKey: 'semi_product',
+        includeModels: [
+          { model: Warehouse, attributes: ['warehouse_id', 'code', 'name'] },
+          { model: SemiFinishedProduct, attributes: ['semi_product_id', 'code', 'name', 'unit'] }
+        ]
+      }
+    ];
+
+    const result = [];
+
+    for (const type of inventoryTypes) {
+      if (!item_type || item_type === type.key) {
+        const where = {};
+        if (warehouse_id) where.warehouse_id = warehouse_id;
+
+        const items = await type.model.findAll({
+          where,
+          include: type.includeModels
+        });
+
+        result.push(
+          ...items.map(inv => ({
+            ...inv.toJSON(),
+            item_type: type.key
+          }))
+        );
+      }
+    }
+
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error('🔥 Error getting inventory summary:', error);
+    return res.status(500).json({ message: 'Lỗi server' });
+  }
+};

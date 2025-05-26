@@ -9,13 +9,13 @@ const semiFinishedProductRoutes = require('./semiFinishedProductRoutes');
 const warehouseRoutes = require('./warehouseRoutes');
 const inventoryRoutes = require('./inventoryRoutes');
 const bomRoutes = require('./bomRoutes');
-const productionPlanRoutes = require('./productionPlanRoutes');
-const productionOrderRoutes = require('./productionOrderRoutes');
+const manufacturingPlanRoutes = require('./manufacturingPlanRoutes');
+const manufacturingOrderRoutes = require('./manufacturingOrderRoutes');
 const workOrderRoutes = require('./workOrderRoutes');
 const materialRequirementRoutes = require('./materialRequirementRoutes');
 const inventoryTransactionRoutes = require('./inventoryTransactionRoutes');
-const productionCostRoutes = require('./productionCostRoutes');
-const productionLogRoutes = require('./productionLogRoutes');
+const manufacturingCostRoutes = require('./manufacturingCostRoutes');
+const manufacturingLogRoutes = require('./manufacturingLogRoutes');
 // Thêm các route khác ở đây khi cần
 
 // API v1 routes
@@ -26,13 +26,13 @@ router.use('/api/v1/semi-finished-products', semiFinishedProductRoutes);
 router.use('/api/v1/warehouses', warehouseRoutes);
 router.use('/api/v1/inventory', inventoryRoutes);
 router.use('/api/v1/boms', bomRoutes);
-router.use('/api/v1/production-plans', productionPlanRoutes);
-router.use('/api/v1/production-orders', productionOrderRoutes);
+router.use('/api/v1/manufacturing-plans', manufacturingPlanRoutes);
+router.use('/api/v1/manufacturing-orders', manufacturingOrderRoutes);
 router.use('/api/v1/work-orders', workOrderRoutes);
 router.use('/api/v1/material-requirements', materialRequirementRoutes);
-router.use('/api/v1/inventory-transactions', inventoryTransactionRoutes);
-router.use('/api/v1/production-costs', productionCostRoutes);
-router.use('/api/v1/production-logs', productionLogRoutes);
+router.use('/api/v1/transactions', inventoryTransactionRoutes);
+router.use('/api/v1/manufacturing-costs', manufacturingCostRoutes);
+router.use('/api/v1/manufacturing-logs', manufacturingLogRoutes);
 // Thêm các route khác ở đây khi cần
 
 module.exports = router; 

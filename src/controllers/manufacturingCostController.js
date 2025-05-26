@@ -2,8 +2,8 @@ const { ManufactureCost, ManufactureOrder, User } = require('../models');
 const { Op } = require('sequelize');
 const sequelize = require('../config/database');
 
-// Get all production costs with pagination and filters
-exports.getAllProductionCosts = async (req, res) => {
+// Get all manufacturing costs with pagination and filters
+exports.getAllManufacturingCosts = async (req, res) => {
   try {
     const { page = 1, limit = 10, order_id, cost_type } = req.query;
     const offset = (page - 1) * limit;
@@ -13,7 +13,7 @@ exports.getAllProductionCosts = async (req, res) => {
     if (order_id) where.order_id = order_id;
     if (cost_type) where.cost_type = cost_type;
     
-    // Find production costs with pagination
+    // Find manufacturing costs with pagination
     const { count, rows } = await ManufactureCost.findAndCountAll({
       where,
       limit: parseInt(limit),
@@ -39,13 +39,13 @@ exports.getAllProductionCosts = async (req, res) => {
       limit: parseInt(limit)
     });
   } catch (error) {
-    console.error('Error getting production costs:', error);
+    console.error('Error getting manufacturing costs:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-// Create new production cost
-exports.createProductionCost = async (req, res) => {
+// Create new manufacturing cost
+exports.createManufacturingCost = async (req, res) => {
   // Transaction to ensure data consistency
   const t = await sequelize.transaction();
   
@@ -78,7 +78,7 @@ exports.createProductionCost = async (req, res) => {
       return res.status(400).json({ message: 'Amount must be a positive number' });
     }
     
-    // Create new production cost
+    // Create new manufacturing cost
     const newCost = await ManufactureCost.create({
       order_id,
       cost_type,
@@ -108,7 +108,7 @@ exports.createProductionCost = async (req, res) => {
     return res.status(201).json(createdCost);
   } catch (error) {
     await t.rollback();
-    console.error('Error creating production cost:', error);
+    console.error('Error creating manufacturing cost:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
 }; 

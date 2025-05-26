@@ -2,8 +2,8 @@ const { ManufacturePlan, ManufacturingPlanDetail, Product, User } = require('../
 const { Op } = require('sequelize');
 const sequelize = require('../config/database');
 
-// Get all production plans with pagination and filters
-exports.getAllProductionPlans = async (req, res) => {
+// Get all Manufacturing plans with pagination and filters
+exports.getAllManufacturingPlans = async (req, res) => {
   try {
     const { page = 1, limit = 10, status, start_date, end_date } = req.query;
     const offset = (page - 1) * limit;
@@ -27,7 +27,7 @@ exports.getAllProductionPlans = async (req, res) => {
       };
     }
     
-    // Find production plans with pagination
+    // Find Manufacturing plans with pagination
     const { count, rows } = await ManufacturePlan.findAndCountAll({
       where,
       limit: parseInt(limit),
@@ -49,13 +49,13 @@ exports.getAllProductionPlans = async (req, res) => {
       limit: parseInt(limit)
     });
   } catch (error) {
-    console.error('Error getting production plans:', error);
+    console.error('Error getting Manufacturing plans:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-// Get production plan by ID with details
-exports.getProductionPlanById = async (req, res) => {
+// Get Manufacturing plan by ID with details
+exports.getManufacturingPlanById = async (req, res) => {
   try {
     const { plan_id } = req.params;
     const plan = await ManufacturePlan.findByPk(plan_id, {
@@ -69,7 +69,7 @@ exports.getProductionPlanById = async (req, res) => {
     });
     
     if (!plan) {
-      return res.status(404).json({ message: 'Production plan not found' });
+      return res.status(404).json({ message: 'Manufacturing plan not found' });
     }
     
     // Get plan details
@@ -90,13 +90,13 @@ exports.getProductionPlanById = async (req, res) => {
     
     return res.status(200).json(result);
   } catch (error) {
-    console.error('Error getting production plan:', error);
+    console.error('Error getting Manufacturing plan:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-// Create new production plan with details
-exports.createProductionPlan = async (req, res) => {
+// Create new Manufacturing plan with details
+exports.createManufacturingPlan = async (req, res) => {
   // Transaction to ensure data consistency
   const t = await sequelize.transaction();
   
@@ -120,7 +120,7 @@ exports.createProductionPlan = async (req, res) => {
       return res.status(400).json({ message: 'Plan code already exists' });
     }
     
-    // Create new production plan
+    // Create new Manufacturing plan
     const newPlan = await ManufacturePlan.create({
       plan_code,
       description,
@@ -178,13 +178,13 @@ exports.createProductionPlan = async (req, res) => {
     return res.status(201).json(createdPlan);
   } catch (error) {
     await t.rollback();
-    console.error('Error creating production plan:', error);
+    console.error('Error creating Manufacturing plan:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-// Update production plan
-exports.updateProductionPlan = async (req, res) => {
+// Update Manufacturing plan
+exports.updateManufacturingPlan = async (req, res) => {
   // Transaction to ensure data consistency
   const t = await sequelize.transaction();
   
@@ -196,7 +196,7 @@ exports.updateProductionPlan = async (req, res) => {
     const plan = await ManufacturePlan.findByPk(plan_id);
     if (!plan) {
       await t.rollback();
-      return res.status(404).json({ message: 'Production plan not found' });
+      return res.status(404).json({ message: 'Manufacturing plan not found' });
     }
     
     // Check if plan_code already exists (if changing)
@@ -280,7 +280,7 @@ exports.updateProductionPlan = async (req, res) => {
     return res.status(200).json(updatedPlan);
   } catch (error) {
     await t.rollback();
-    console.error('Error updating production plan:', error);
+    console.error('Error updating Manufacturing plan:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
 }; 

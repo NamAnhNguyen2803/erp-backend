@@ -4,7 +4,7 @@ const sequelize = require('../config/database');
 class SemiProductInventory extends Model {}
 
 SemiProductInventory.init({
-  id: {
+  inventory_id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true
@@ -33,23 +33,13 @@ SemiProductInventory.init({
   unit: {
     type: DataTypes.STRING(20),
     allowNull: false
-  },
-  created_at: {
-    type: DataTypes.DATE,
-    allowNull: false,
-    defaultValue: DataTypes.NOW
-  },
-  updated_at: {
-    type: DataTypes.DATE,
-    allowNull: false,
-    defaultValue: DataTypes.NOW
   }
 }, {
   sequelize,
   modelName: 'SemiProductInventory',
   tableName: 'semi_product_inventory',
   timestamps: true,
-  underscored: true,
+  // underscored: true,
   indexes: [
     {
       unique: true,

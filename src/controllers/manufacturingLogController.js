@@ -2,8 +2,8 @@ const { ManufactureLog, WorkOrder, User, ManufactureOrder, ManufactureStep } = r
 const { Op } = require('sequelize');
 const sequelize = require('../config/database');
 
-// Get all production logs with pagination and filters
-exports.getAllProductionLogs = async (req, res) => {
+// Get all manufacturing logs with pagination and filters
+exports.getAllManufacturingLogs = async (req, res) => {
   try {
     const { page = 1, limit = 10, work_id, action } = req.query;
     const offset = (page - 1) * limit;
@@ -13,7 +13,7 @@ exports.getAllProductionLogs = async (req, res) => {
     if (work_id) where.work_id = work_id;
     if (action) where.action = action;
     
-    // Find production logs with pagination
+    // Find manufacturing logs with pagination
     const { count, rows } = await ManufactureLog.findAndCountAll({
       where,
       limit: parseInt(limit),
@@ -49,13 +49,13 @@ exports.getAllProductionLogs = async (req, res) => {
       limit: parseInt(limit)
     });
   } catch (error) {
-    console.error('Error getting production logs:', error);
+    console.error('Error getting manufacturing logs:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-// Create new production log
-exports.createProductionLog = async (req, res) => {
+// Create new manufacturing log
+exports.createManufacturingLog = async (req, res) => {
   // Transaction to ensure data consistency
   const t = await sequelize.transaction();
   
@@ -102,7 +102,7 @@ exports.createProductionLog = async (req, res) => {
       }, { transaction: t });
     }
     
-    // Create new production log
+    // Create new manufacturing log
     const newLog = await ManufactureLog.create({
       work_id,
       action,
@@ -142,7 +142,7 @@ exports.createProductionLog = async (req, res) => {
     return res.status(201).json(createdLog);
   } catch (error) {
     await t.rollback();
-    console.error('Error creating production log:', error);
+    console.error('Error creating manufacturing log:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
 }; 

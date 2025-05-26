@@ -4,7 +4,7 @@ const sequelize = require('../config/database');
 class ProductInventory extends Model {}
 
 ProductInventory.init({
-  id: {
+  inventory_id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true
@@ -34,22 +34,11 @@ ProductInventory.init({
     type: DataTypes.STRING(20),
     allowNull: false
   },
-  created_at: {
-    type: DataTypes.DATE,
-    allowNull: false,
-    defaultValue: DataTypes.NOW
-  },
-  updated_at: {
-    type: DataTypes.DATE,
-    allowNull: false,
-    defaultValue: DataTypes.NOW
-  }
 }, {
   sequelize,
   modelName: 'ProductInventory',
   tableName: 'product_inventory',
   timestamps: true,
-  underscored: true,
   indexes: [
     {
       unique: true,
@@ -57,17 +46,4 @@ ProductInventory.init({
     }
   ]
 });
-
-// Define associations
-ProductInventory.associate = (models) => {
-  ProductInventory.belongsTo(models.Product, {
-    foreignKey: 'product_id',
-    as: 'product'
-  });
-  ProductInventory.belongsTo(models.Warehouse, {
-    foreignKey: 'warehouse_id',
-    as: 'warehouse'
-  });
-};
-
 module.exports = ProductInventory; 

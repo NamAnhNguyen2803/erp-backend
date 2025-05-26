@@ -4,10 +4,13 @@ const inventoryTransactionController = require('../controllers/inventoryTransact
 // Comment tạm thời middleware xác thực
 // const { authenticateUser, authorizeManager } = require('../middleware/authMiddleware');
 
-// GET /api/v1/inventory-transactions - Get all inventory transactions
-router.get('/', inventoryTransactionController.getAllInventoryTransactions);
-
-// POST /api/v1/inventory-transactions - Create a new inventory transaction
-router.post('/', inventoryTransactionController.createInventoryTransaction);
+// GET /api/v1/transactions
+// router.get('/', inventoryTransactionController.getAllInventoryTransactions);
+router.post('/import', inventoryTransactionController.importGoods);
+router.post('/export', inventoryTransactionController.exportGoods);
+router.post('/transfer', inventoryTransactionController.transferGoods);
+router.get('/', inventoryTransactionController.getInventorySummary);
+router.get('/all', inventoryTransactionController.getAllInventoryTransactions);
+router.get('/{id}', inventoryTransactionController.getTransactionById);
 
 module.exports = router; 

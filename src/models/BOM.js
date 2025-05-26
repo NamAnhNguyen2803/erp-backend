@@ -21,10 +21,6 @@ const BOM = sequelize.define('BOM', {
     type: DataTypes.STRING,
     allowNull: false
   },
-  is_active: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: true
-  },
   created_by: {
     type: DataTypes.INTEGER,
     allowNull: false,

@@ -19,7 +19,6 @@ const Product = require('./Product');
 const Material = require('./Material');
 const SemiFinishedProduct = require('./SemiFinishedProduct');
 const Warehouse = require('./Warehouse');
-const Inventory = require('./Inventory');
 const BOM = require('./BOM');
 const BOMItem = require('./BOMItem');
 const ManufacturePlan = require('./ManufacturePlan');
@@ -91,16 +90,11 @@ const defineAssociations = () => {
     MaterialRequirement.belongsTo(Material, { foreignKey: 'material_id' });
     Material.hasMany(MaterialRequirement, { foreignKey: 'material_id' });
 
-    // Inventory relationships
-    Inventory.belongsTo(Warehouse, { foreignKey: 'warehouse_id' });
-    Warehouse.hasMany(Inventory, { foreignKey: 'warehouse_id' });
-
-
     // Product Inventory relationships  
     Product.hasMany(ProductInventory, { foreignKey: 'product_id', as: 'ProductInventories' });
-    ProductInventory.belongsTo(Product, { foreignKey: 'product_id', as: 'product' });
+    ProductInventory.belongsTo(Product, { foreignKey: 'product_id' });
     
-    ProductInventory.belongsTo(Warehouse, { foreignKey: 'warehouse_id', as: 'Warehouse' });
+    ProductInventory.belongsTo(Warehouse, { foreignKey: 'warehouse_id'});
     Warehouse.hasMany(ProductInventory, { foreignKey: 'warehouse_id', as: 'ProductInventories' }); 
 
     // Material Inventory relationships
@@ -149,9 +143,9 @@ defineAssociations();
 const syncDatabase = async () => {
   try {
     // Thiết lập các tùy chọn đồng bộ cơ sở dữ liệu
-    // const syncOptions = {
-    //   alter: true,
-    // };
+    const syncOptions = {
+      alter: true,
+    };
 
     // console.log('Starting database synchronization with options:', syncOptions);
 
@@ -171,7 +165,6 @@ module.exports = {
   Material,
   SemiFinishedProduct,
   Warehouse,
-  Inventory,
   BOM,
   BOMItem,
   ManufacturePlan,

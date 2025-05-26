@@ -2,8 +2,8 @@ const { ManufactureOrder, ManufacturePlan, Product, BOM, User } = require('../mo
 const { Op } = require('sequelize');
 const sequelize = require('../config/database');
 
-// Get all production orders with pagination and filters
-exports.getAllProductionOrders = async (req, res) => {
+// Get all manufacturing orders with pagination and filters
+exports.getAllManufacturingOrders = async (req, res) => {
   try {
     const { page = 1, limit = 10, plan_id, status } = req.query;
     const offset = (page - 1) * limit;
@@ -13,7 +13,7 @@ exports.getAllProductionOrders = async (req, res) => {
     if (plan_id) where.plan_id = plan_id;
     if (status) where.status = status;
     
-    // Find production orders with pagination
+    // Find manufacturing orders with pagination
     const { count, rows } = await ManufactureOrder.findAndCountAll({
       where,
       limit: parseInt(limit),
@@ -46,13 +46,13 @@ exports.getAllProductionOrders = async (req, res) => {
       limit: parseInt(limit)
     });
   } catch (error) {
-    console.error('Error getting production orders:', error);
+    console.error('Error getting manufacturing orders:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-// Get production order by ID
-exports.getProductionOrderById = async (req, res) => {
+// Get manufacturing order by ID
+exports.getManufacturingOrderById = async (req, res) => {
   try {
     const { order_id } = req.params;
     const order = await ManufactureOrder.findByPk(order_id, {
@@ -77,18 +77,18 @@ exports.getProductionOrderById = async (req, res) => {
     });
     
     if (!order) {
-      return res.status(404).json({ message: 'Production order not found' });
+      return res.status(404).json({ message: 'manufacturing order not found' });
     }
     
     return res.status(200).json(order);
   } catch (error) {
-    console.error('Error getting production order:', error);
+    console.error('Error getting manufacturing order:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-// Create new production order
-exports.createProductionOrder = async (req, res) => {
+// Create new manufacturing order
+exports.createManufacturingOrder = async (req, res) => {
   // Transaction to ensure data consistency
   const t = await sequelize.transaction();
   
@@ -143,7 +143,7 @@ exports.createProductionOrder = async (req, res) => {
       return res.status(400).json({ message: 'Order number already exists' });
     }
     
-    // Create new production order
+    // Create new manufacturing order
     const newOrder = await ManufactureOrder.create({
       order_number,
       plan_id,
@@ -184,13 +184,13 @@ exports.createProductionOrder = async (req, res) => {
     return res.status(201).json(createdOrder);
   } catch (error) {
     await t.rollback();
-    console.error('Error creating production order:', error);
+    console.error('Error creating manufacturing order:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-// Update production order
-exports.updateProductionOrder = async (req, res) => {
+// Update manufacturing order
+exports.updateManufacturingOrder = async (req, res) => {
   // Transaction to ensure data consistency
   const t = await sequelize.transaction();
   
@@ -202,7 +202,7 @@ exports.updateProductionOrder = async (req, res) => {
     const order = await ManufactureOrder.findByPk(order_id);
     if (!order) {
       await t.rollback();
-      return res.status(404).json({ message: 'Production order not found' });
+      return res.status(404).json({ message: 'manufacturing order not found' });
     }
     
     // Update order fields
@@ -241,7 +241,7 @@ exports.updateProductionOrder = async (req, res) => {
     return res.status(200).json(updatedOrder);
   } catch (error) {
     await t.rollback();
-    console.error('Error updating production order:', error);
+    console.error('Error updating manufacturing order:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
 }; 
