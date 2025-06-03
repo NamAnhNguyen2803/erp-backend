@@ -1,388 +1,541 @@
-const { WorkOrder, ManufactureOrder, ManufactureStep, WorkStation, SemiFinishedProduct, User, MaterialRequirement, BOM, Inventory, InventoryTransaction } = require('../models');
+const WorkOrder = require('../models/WorkOrder');
+const ManufacturingOrder = require('../models/ManufacturingOrder');
+const ManufacturingOrderDetail = require('../models/ManufacturingOrderDetail');
+const Material = require('../models/Material');
+const SemiFinishedProduct = require('../models/SemiFinishedProduct');
+const Product = require('../models/Product');
+const MaterialRequirement = require('../models/MaterialRequirement');
+const User = require('../models/User');
 const { Op } = require('sequelize');
-const sequelize = require('../config/database');
-const bomController = require('./bomController');
+const { generateWorkCode, } = require('../helper/digitWorkCodeGenerator');
+const { inventoryHelper } = require('../helper/inventoryHelper');
+const InventoryItem = require('../models/InventoryItem');
+const MaterialStatusController = require('./materialStatusController');
+const {createMaterialRequirement} = require('./materialRequirementController');
+const BOM = require('../models/BOM');
+const BOMItem = require('../models/BOMItem');
+class WorkOrderController {
+  // Lấy danh sách work orders
+  static async getAll(req, res) {
+    try {
+      const {
+        page = 1,
+        limit = 10,
+        status,
+        assigned_to,
+        priority,
+        operation_type,
+        search
+      } = req.query;
 
-// Get all work orders with pagination and filters
-exports.getAllWorkOrders = async (req, res) => {
-  try {
-    const { page = 1, limit = 10, order_id, status, station_id } = req.query;
-    const offset = (page - 1) * limit;
-    
-    // Build filter condition
-    const where = {};
-    if (order_id) where.order_id = order_id;
-    if (status) where.status = status;
-    if (station_id) where.station_id = station_id;
-    
-    // Find work orders with pagination
-    const { count, rows } = await WorkOrder.findAndCountAll({
-      where,
-      limit: parseInt(limit),
-      offset: parseInt(offset),
-      include: [
-        {
-          model: ManufactureOrder,
-          attributes: ['order_id', 'order_number', 'product_id', 'status']
-        },
-        {
-          model: ManufactureStep,
-          attributes: ['step_id', 'step_name', 'step_description']
-        },
-        {
-          model: WorkStation,
-          attributes: ['station_id', 'code', 'name']
-        },
-        {
-          model: SemiFinishedProduct,
-          attributes: ['semi_product_id', 'code', 'name']
-        },
-        {
-          model: User,
-          attributes: ['user_id', 'username'],
-          as: 'AssignedUser'
-        }
-      ],
-      order: [['work_id', 'DESC']]
-    });
-    
-    return res.status(200).json({
-      work_orders: rows,
-      total: count,
-      page: parseInt(page),
-      limit: parseInt(limit)
-    });
-  } catch (error) {
-    console.error('Error getting work orders:', error);
-    return res.status(500).json({ message: 'Internal server error' });
-  }
-};
+      const offset = (page - 1) * limit;
+      const where = {};
 
-// Get work order by ID
-exports.getWorkOrderById = async (req, res) => {
-  try {
-    const { work_id } = req.params;
-    const workOrder = await WorkOrder.findByPk(work_id, {
-      include: [
-        {
-          model: ManufactureOrder,
-          attributes: ['order_id', 'order_number', 'product_id', 'status']
-        },
-        {
-          model: ManufactureStep,
-          attributes: ['step_id', 'step_name', 'step_description']
-        },
-        {
-          model: WorkStation,
-          attributes: ['station_id', 'code', 'name']
-        },
-        {
-          model: SemiFinishedProduct,
-          attributes: ['semi_product_id', 'code', 'name', 'unit']
-        },
-        {
-          model: User,
-          attributes: ['user_id', 'username'],
-          as: 'AssignedUser'
-        },
-        {
-          model: MaterialRequirement,
-          attributes: ['requirement_id', 'material_id', 'required_quantity', 'issued_quantity']
-        }
-      ]
-    });
-    
-    if (!workOrder) {
-      return res.status(404).json({ message: 'Work order not found' });
-    }
-    
-    return res.status(200).json(workOrder);
-  } catch (error) {
-    console.error('Error getting work order:', error);
-    return res.status(500).json({ message: 'Internal server error' });
-  }
-};
-
-// Create new work order
-exports.createWorkOrder = async (req, res) => {
-  // Transaction to ensure data consistency
-  const t = await sequelize.transaction();
-  
-  try {
-    const { work_number, order_id, step_id, station_id, semi_product_id, planned_quantity, status, assigned_to } = req.body;
-    
-    // Validate order_id
-    const order = await ManufactureOrder.findByPk(order_id);
-    if (!order) {
-      await t.rollback();
-      return res.status(400).json({ message: 'Invalid order_id' });
-    }
-    
-    // Validate step_id
-    const step = await ManufactureStep.findByPk(step_id);
-    if (!step) {
-      await t.rollback();
-      return res.status(400).json({ message: 'Invalid step_id' });
-    }
-    
-    // Validate station_id
-    const station = await WorkStation.findByPk(station_id);
-    if (!station) {
-      await t.rollback();
-      return res.status(400).json({ message: 'Invalid station_id' });
-    }
-    
-    // Validate semi_product_id if provided
-    if (semi_product_id) {
-      const semiProduct = await SemiFinishedProduct.findByPk(semi_product_id);
-      if (!semiProduct) {
-        await t.rollback();
-        return res.status(400).json({ message: 'Invalid semi_product_id' });
+      // Filters
+      if (status) where.status = status;
+      if (assigned_to) where.assigned_to = assigned_to;
+      if (priority) where.priority = priority;
+      if (operation_type) where.operation_type = operation_type;
+      if (search) {
+        where[Op.or] = [
+          { work_code: { [Op.like]: `%${search}%` } },
+          { description: { [Op.like]: `%${search}%` } }
+        ];
       }
-    }
-    
-    // Validate assigned_to if provided
-    if (assigned_to) {
-      const user = await User.findByPk(assigned_to);
-      if (!user) {
-        await t.rollback();
-        return res.status(400).json({ message: 'Invalid assigned_to user_id' });
-      }
-    }
-    
-    // Check if work_number already exists
-    const existingWorkOrder = await WorkOrder.findOne({
-      where: { work_number }
-    });
-    
-    if (existingWorkOrder) {
-      await t.rollback();
-      return res.status(400).json({ message: 'Work number already exists' });
-    }
-    
-    // Create new work order
-    const newWorkOrder = await WorkOrder.create({
-      work_number,
-      order_id,
-      step_id,
-      station_id,
-      semi_product_id,
-      planned_quantity,
-      completed_quantity: 0,
-      start_time: null,
-      end_time: null,
-      status: status || 'pending',
-      assigned_to
-    }, { transaction: t });
-    
-    await t.commit();
-    
-    // Get the created work order with details
-    const createdWorkOrder = await WorkOrder.findByPk(newWorkOrder.work_id, {
-      include: [
-        {
-          model: ManufactureOrder,
-          attributes: ['order_id', 'order_number', 'product_id', 'status']
-        },
-        {
-          model: ManufactureStep,
-          attributes: ['step_id', 'step_name', 'step_description']
-        },
-        {
-          model: WorkStation,
-          attributes: ['station_id', 'code', 'name']
-        },
-        {
-          model: SemiFinishedProduct,
-          attributes: ['semi_product_id', 'code', 'name']
-        },
-        {
-          model: User,
-          attributes: ['user_id', 'username'],
-          as: 'AssignedUser'
-        }
-      ]
-    });
-    
-    return res.status(201).json(createdWorkOrder);
-  } catch (error) {
-    await t.rollback();
-    console.error('Error creating work order:', error);
-    return res.status(500).json({ message: 'Internal server error' });
-  }
-};
 
-// Update work order
-exports.updateWorkOrder = async (req, res) => {
-  // Transaction to ensure data consistency
-  const t = await sequelize.transaction();
-  
-  try {
-    const { work_id } = req.params;
-    const { planned_quantity, completed_quantity, start_time, end_time, status } = req.body;
-    
-    // Find work order by ID
-    const workOrder = await WorkOrder.findByPk(work_id);
-    if (!workOrder) {
-      await t.rollback();
-      return res.status(404).json({ message: 'Work order not found' });
-    }
-    
-    // Update work order fields
-    await workOrder.update({
-      planned_quantity: planned_quantity !== undefined ? planned_quantity : workOrder.planned_quantity,
-      completed_quantity: completed_quantity !== undefined ? completed_quantity : workOrder.completed_quantity,
-      start_time: start_time ? new Date(start_time) : workOrder.start_time,
-      end_time: end_time ? new Date(end_time) : workOrder.end_time,
-      status: status || workOrder.status
-    }, { transaction: t });
-    
-    await t.commit();
-    
-    // Get the updated work order with details
-    const updatedWorkOrder = await WorkOrder.findByPk(work_id, {
-      include: [
-        {
-          model: ManufactureOrder,
-          attributes: ['order_id', 'order_number', 'product_id', 'status']
-        },
-        {
-          model: ManufactureStep,
-          attributes: ['step_id', 'step_name', 'step_description']
-        },
-        {
-          model: WorkStation,
-          attributes: ['station_id', 'code', 'name']
-        },
-        {
-          model: SemiFinishedProduct,
-          attributes: ['semi_product_id', 'code', 'name']
-        },
-        {
-          model: User,
-          attributes: ['user_id', 'username'],
-          as: 'AssignedUser'
-        }
-      ]
-    });
-    
-    return res.status(200).json(updatedWorkOrder);
-  } catch (error) {
-    await t.rollback();
-    console.error('Error updating work order:', error);
-    return res.status(500).json({ message: 'Internal server error' });
-  }
-};
+      const { count, rows } = await WorkOrder.findAndCountAll({
+        where,
+        include: [
+          { model: ManufacturingOrder, as: 'ManufacturingOrder' },
+          { model: ManufacturingOrderDetail, as: 'ManufacturingOrderDetail' },
+          { model: User, as: 'AssignedUser', attributes: ['user_id', 'username', 'fullname'] }
+        ],
+        limit: parseInt(limit),
+        offset,
+        order: [['createdAt', 'DESC']]
+      });
 
-// Complete work order and transfer products
-exports.completeWorkOrder = async (req, res) => {
-  const t = await sequelize.transaction();
-  
-  try {
-    const { work_id } = req.params;
-    const { completed_quantity } = req.body;
-    
-    const workOrder = await WorkOrder.findByPk(work_id, {
-      include: [
-        {
-          model: ManufactureOrder,
-          include: [{ model: BOM }]
+      res.json({
+        success: true,
+        data: {
+          workOrders: rows,
+          pagination: {
+            total: count,
+            page: parseInt(page),
+            limit: parseInt(limit),
+            totalPages: Math.ceil(count / limit)
+          }
         }
-      ]
-    });
-    
-    if (!workOrder) {
-      await t.rollback();
-      return res.status(404).json({ message: 'Work order not found' });
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
     }
-    
-    // Deduct materials from BOM
-    await bomController.deductMaterialsFromBom(
-      workOrder.ManufactureOrder.BOM.bom_id,
-      completed_quantity,
-      t
-    );
-    
-    // Update work order status
-    workOrder.completed_quantity = completed_quantity;
-    workOrder.status = 'completed';
-    workOrder.end_time = new Date();
-    await workOrder.save({ transaction: t });
-    
-    // Add completed products to warehouse 2000
-    const inventory = await Inventory.findOne({
-      where: {
-        item_id: workOrder.semi_product_id || workOrder.ManufactureOrder.product_id,
-        item_type: workOrder.semi_product_id ? 'semi_product' : 'product',
-        warehouse_id: 2000
-      }
-    });
-    
-    if (inventory) {
-      inventory.quantity += completed_quantity;
-      await inventory.save({ transaction: t });
-    } else {
-      await Inventory.create({
-        item_id: workOrder.semi_product_id || workOrder.ManufactureOrder.product_id,
-        item_type: workOrder.semi_product_id ? 'semi_product' : 'product',
-        warehouse_id: 2000,
-        quantity: completed_quantity,
-        last_updated: new Date()
-      }, { transaction: t });
-    }
-    
-    // Create inventory transaction for warehouse 2000
-    await InventoryTransaction.create({
-      transaction_type: 'import',
-      item_id: workOrder.semi_product_id || workOrder.ManufactureOrder.product_id,
-      item_type: workOrder.semi_product_id ? 'semi_product' : 'product',
-      to_warehouse_id: 2000,
-      quantity: completed_quantity,
-      reference_id: work_id,
-      reference_type: 'work_order',
-      transaction_date: new Date()
-    }, { transaction: t });
-    
-    // Transfer to warehouse 3000
-    await InventoryTransaction.create({
-      transaction_type: 'transfer',
-      item_id: workOrder.semi_product_id || workOrder.ManufactureOrder.product_id,
-      item_type: workOrder.semi_product_id ? 'semi_product' : 'product',
-      from_warehouse_id: 2000,
-      to_warehouse_id: 3000,
-      quantity: completed_quantity,
-      reference_id: work_id,
-      reference_type: 'work_order',
-      transaction_date: new Date()
-    }, { transaction: t });
-    
-    // Update inventory in warehouse 3000
-    const inventory3000 = await Inventory.findOne({
-      where: {
-        item_id: workOrder.semi_product_id || workOrder.ManufactureOrder.product_id,
-        item_type: workOrder.semi_product_id ? 'semi_product' : 'product',
-        warehouse_id: 3000
-      }
-    });
-    
-    if (inventory3000) {
-      inventory3000.quantity += completed_quantity;
-      await inventory3000.save({ transaction: t });
-    } else {
-      await Inventory.create({
-        item_id: workOrder.semi_product_id || workOrder.ManufactureOrder.product_id,
-        item_type: workOrder.semi_product_id ? 'semi_product' : 'product',
-        warehouse_id: 3000,
-        quantity: completed_quantity,
-        last_updated: new Date()
-      }, { transaction: t });
-    }
-    
-    await t.commit();
-    return res.status(200).json({ message: 'Work order completed successfully' });
-  } catch (error) {
-    await t.rollback();
-    console.error('Error completing work order:', error);
-    return res.status(500).json({ message: 'Internal server error' });
   }
-}; 
+
+  // Lấy chi tiết work order
+  static async getByWorkId(req, res) {
+    try {
+      const { id } = req.params; // work_id
+
+      const workOrders = await WorkOrder.findAll({
+        where: { work_id: id },
+        include: [
+          { model: ManufacturingOrder },
+          { model: ManufacturingOrderDetail },
+          { model: User, as: 'AssignedUser', attributes: ['user_id', 'username', 'fullname'] }
+        ]
+      });
+
+      if (!workOrders || workOrders.length === 0) {
+        return res.json({ success: true, data: null }); // trả về null nếu không có
+      }
+
+      const rawWorkOrders = workOrders.map(wo => {
+        const data = wo.toJSON();
+        const detail = data.ManufacturingOrderDetail;
+
+        return {
+          ...data,
+          item_type: detail?.item_type || null,
+          item_id: detail?.item_id || null
+        };
+      });
+
+      const enrichedWorkOrders = await inventoryHelper(rawWorkOrders);
+
+      // Trả về đối tượng đầu tiên, không phải mảng
+      res.json({ success: true, data: enrichedWorkOrders[0] });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  static async getByOrderId(req, res) {
+    try {
+      const { id } = req.params; // order_id
+
+      const workOrders = await WorkOrder.findAll({
+        where: { order_id: id },
+        include: [
+          { model: ManufacturingOrder },
+          { model: ManufacturingOrderDetail },
+          { model: User, as: 'AssignedUser', attributes: ['user_id', 'username', 'fullname'] }
+        ]
+      });
+
+      if (!workOrders || workOrders.length === 0) {
+        return res.json({ success: true, data: [] }); // Trả về mảng rỗng nếu không có workOrders
+      }
+
+      const rawWorkOrders = workOrders.map(wo => {
+        const data = wo.toJSON();
+        const detail = data.ManufacturingOrderDetail;
+
+        return {
+          ...data,
+          item_type: detail?.item_type || null,
+          item_id: detail?.item_id || null
+        };
+      });
+
+      const enrichedWorkOrders = await inventoryHelper(rawWorkOrders);
+
+      res.json({ success: true, data: enrichedWorkOrders });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+
+
+  // Tạo work order mới
+  static async create(req, res) {
+    try {
+      const {
+        order_id,
+        detail_id,
+        process_step,
+        operation_type,
+        work_quantity,
+        assigned_to,
+        department,
+        priority,
+        planned_start,
+        planned_end,
+        description,
+        notes
+      } = req.body;
+
+      const orderDetail = await ManufacturingOrderDetail.findByPk(detail_id);
+      if (!orderDetail) {
+        return res.status(404).json({ success: false, message: 'Manufacturing order detail không tồn tại' });
+      }
+
+      const existingWorkOrders = await WorkOrder.findAll({ where: { detail_id } });
+      const totalWorkQuantity = existingWorkOrders.reduce(
+        (sum, wo) => sum + parseFloat(wo.work_quantity),
+        0
+      );
+
+      if (totalWorkQuantity + parseFloat(work_quantity) > parseFloat(orderDetail.quantity)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Tổng số lượng work orders vượt quá số lượng cần sản xuất'
+        });
+      }
+
+      const workOrder = await WorkOrder.create({
+        order_id,
+        detail_id,
+        process_step,
+        operation_type,
+        work_quantity,
+        assigned_to,
+        department,
+        priority,
+        planned_start,
+        planned_end,
+        description,
+        notes
+      });
+      async function createMaterialRequirement(workId, templateMaterials) {
+        const entries = templateMaterials.map(mat => ({
+          work_id: workId,
+          material_id: mat.material_id,
+          required_quantity: mat.quantity
+        }));
+        await MaterialRequirement.bulkCreate(entries);
+      }
+      return res.status(201).json({ success: true, data: workOrder });
+
+    } catch (error) {
+      console.error(error);
+      if (error.name === 'SequelizeUniqueConstraintError') {
+        return res.status(400).json({ success: false, message: 'Mã work order đã tồn tại' });
+      }
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  // Cập nhật work order
+  static async update(req, res) {
+    try {
+      const { id } = req.params;
+      const updateData = req.body;
+
+      const [updatedRows] = await WorkOrder.update(updateData, {
+        where: { work_id: id }
+      });
+
+      if (updatedRows === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Work order không tồn tại'
+        });
+      }
+
+      const updatedWorkOrder = await WorkOrder.findByPk(id);
+      res.json({
+        success: true,
+        data: updatedWorkOrder
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  // Bắt đầu work order
+  static async start(req, res) {
+    try {
+      const { id } = req.params;
+
+      const workOrder = await WorkOrder.findByPk(id);
+      if (!workOrder) {
+        return res.status(404).json({
+          success: false,
+          message: 'Work order không tồn tại'
+        });
+      }
+
+      if (workOrder.status !== 'pending') {
+        return res.status(400).json({
+          success: false,
+          message: 'Chỉ có thể bắt đầu work order ở trạng thái pending'
+        });
+      }
+
+      await workOrder.update({
+        status: 'in_progress',
+        actual_start: new Date()
+      });
+
+      res.json({
+        success: true,
+        message: 'Bắt đầu work order thành công',
+        data: workOrder
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  // Hoàn thành work order
+  static async complete(req, res) {
+    try {
+      const { id } = req.params;
+      const { completed_qty } = req.body;
+
+      const workOrder = await WorkOrder.findByPk(id);
+      if (!workOrder) {
+        return res.status(404).json({
+          success: false,
+          message: 'Work order không tồn tại'
+        });
+      }
+
+      if (workOrder.status !== 'in_progress') {
+        return res.status(400).json({
+          success: false,
+          message: 'Chỉ có thể hoàn thành work order đang in_progress'
+        });
+      }
+
+      await workOrder.update({
+        status: 'completed',
+        actual_end: new Date(),
+        completed_qty: completed_qty || workOrder.work_quantity
+      });
+
+      res.json({
+        success: true,
+        message: 'Work order hoàn thành thành công',
+        data: workOrder
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  // Phân công work order
+  static async assign(req, res) {
+    try {
+      const { id } = req.params;
+      const { assigned_to, department } = req.body;
+
+      const [updatedRows] = await WorkOrder.update(
+        { assigned_to, department },
+        { where: { work_id: id } }
+      );
+
+      if (updatedRows === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Work order không tồn tại'
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Phân công work order thành công'
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  // Lấy work orders của user hiện tại
+  static async getMyTasks(req, res) {
+    try {
+      const userId = req.user.user_id; // Assuming auth middleware sets req.user
+
+      const workOrders = await WorkOrder.findAll({
+        where: { assigned_to: userId },
+        include: [
+          { model: ManufacturingOrder, as: 'manufacturingOrder' },
+          { model: ManufacturingOrderDetail, as: 'orderDetail' }
+        ],
+        order: [['priority', 'DESC'], ['planned_start', 'ASC']]
+      });
+
+      res.json({
+        success: true,
+        data: workOrders
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  // Thống kê work orders
+  static async getStatistics(req, res) {
+    try {
+      const stats = await WorkOrder.findAll({
+        attributes: [
+          'status',
+          [sequelize.fn('COUNT', sequelize.col('work_id')), 'count']
+        ],
+        group: ['status'],
+        raw: true
+      });
+
+      const priorityStats = await WorkOrder.findAll({
+        attributes: [
+          'priority',
+          [sequelize.fn('COUNT', sequelize.col('work_id')), 'count']
+        ],
+        group: ['priority'],
+        raw: true
+      });
+
+      res.json({
+        success: true,
+        data: {
+          byStatus: stats,
+          byPriority: priorityStats
+        }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+  // Xóa work order
+  static async delete(req, res) {
+    try {
+      const { id } = req.params;
+
+      const workOrder = await WorkOrder.findByPk(id);
+      if (!workOrder) {
+        return res.status(404).json({
+          success: false,
+          message: 'Work order không tồn tại'
+        });
+      }
+
+      if (workOrder.status === 'in_progress') {
+        return res.status(400).json({
+          success: false,
+          message: 'Không thể xóa work order đang thực hiện'
+        });
+      }
+
+      await workOrder.destroy();
+
+      res.json({
+        success: true,
+        message: 'Xóa work order thành công'
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: error.message
+      });
+    }
+  }
+
+
+static async getMaterialStatus(req, res) {
+  try {
+    const { id } = req.params; // work_id
+
+    // 1. Lấy WorkOrder và detail
+    const workOrder = await WorkOrder.findOne({
+      where: { work_id: id },
+      include: [{ model: ManufacturingOrderDetail }],
+    });
+
+    if (!workOrder || !workOrder.ManufacturingOrderDetail) {
+      return res.status(404).json({ message: 'Không tìm thấy WorkOrder hoặc detail.' });
+    }
+
+    const detail = workOrder.ManufacturingOrderDetail;
+    if (detail.item_type !== 'product') {
+      return res.status(400).json({ message: 'WorkOrder không phải sản xuất sản phẩm hoàn chỉnh.' });
+    }
+
+    const productId = detail.item_id;
+
+    // 2. Tìm BOM đang hoạt động
+    const bom = await BOM.findOne({
+      where: { product_id: productId },
+      order: [['createdAt', 'DESC']],
+    });
+
+    if (!bom) return res.status(404).json({ message: 'Không tìm thấy BOM cho sản phẩm.' });
+
+    // 3. Lấy BOM Items kèm Material (để lấy tên vật liệu)
+    const bomItems = await BOMItem.findAll({
+      where: { bom_id: bom.bom_id },
+      include: [{ model: Material, attributes: ['material_id', 'name'] }],
+    });
+
+    if (!bomItems.length)
+      return res.status(404).json({ message: 'Không có item nào trong BOM.' });
+
+    // 4. Tính quantity_required theo tổng sản lượng từ detail
+    const productionQty = parseFloat(detail.quantity);
+    const requirements = bomItems.map((item) => ({
+      work_id: workOrder.work_id,
+      material_id: item.material_id,
+      quantity: productionQty * parseFloat(item.quantity),
+      // Nếu cần, bạn có thể thêm info notes, waste_percent ...
+    }));
+
+    // 5. Bulk Create MaterialRequirement (cẩn trọng: tránh duplicate nếu cần)
+    await MaterialRequirement.bulkCreate(requirements);
+
+    // 6. Chuẩn bị data BOM hiển thị: id, mã BOM, tên vật liệu, số lượng
+    const bomDisplay = bomItems.map((item) => ({
+      item_id: item.item_id,
+      bom_id: item.bom_id,
+      material_id: item.material_id,
+      material_name: item.Material.name,
+      quantity: item.quantity,
+    }));
+
+    // 7. Trả về kết quả
+    res.json({
+      message: 'Tạo material_requirements thành công.',
+      materialRequirements: requirements,
+      bom: {
+        bom_id: bom.bom_id,
+        product_id: bom.product_id,
+        version: bom.version,
+        items: bomDisplay,
+      },
+    });
+  } catch (err) {
+    console.error('Lỗi generateMaterialRequirements:', err);
+    res.status(500).json({ message: 'Lỗi server.' });
+  }
+}
+
+
+
+}
+
+
+module.exports = WorkOrderController;

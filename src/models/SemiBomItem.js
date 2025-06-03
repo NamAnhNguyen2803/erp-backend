@@ -1,10 +1,8 @@
-const { Model, DataTypes } = require('sequelize');
+const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
-class SemiBomItem extends Model {}
-
-SemiBomItem.init({
-  id: {
+const SemiBomItem = sequelize.define('SemiBomItem', {
+  item_id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true
@@ -13,80 +11,45 @@ SemiBomItem.init({
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'semi_BOMs',
-      key: 'id'
+      model: 'Semi_BOMs',
+      key: 'semi_bom_id'
     }
   },
-  item_id: {
+  material_id: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    comment: 'ID of the material or semi-finished product'
+    references: {
+      model: 'Materials',
+      key: 'material_id'
+    }
   },
   item_type: {
-    type: DataTypes.ENUM('material', 'semi_product'),
+    type: DataTypes.STRING(20),
     allowNull: false,
-    comment: 'Type of the item (material or semi-finished product)'
+    comment: 'material, semi_product, product'
   },
-  quantity: {
-    type: DataTypes.DECIMAL(10, 2),
+  bom_level: {
+    type: DataTypes.INTEGER,
     allowNull: false,
     defaultValue: 1
   },
-  unit: {
-    type: DataTypes.STRING(20),
+  reference: {
+    type: DataTypes.STRING(50)
+  },
+  quantity: {
+    type: DataTypes.DECIMAL(10, 2),
     allowNull: false
   },
-  created_at: {
-    type: DataTypes.DATE,
-    allowNull: false,
-    defaultValue: DataTypes.NOW
+  waste_percent: {
+    type: DataTypes.DECIMAL(5, 2),
+    defaultValue: 0
   },
-  updated_at: {
-    type: DataTypes.DATE,
-    allowNull: false,
-    defaultValue: DataTypes.NOW
+  notes: {
+    type: DataTypes.TEXT
   }
 }, {
-  sequelize,
-  modelName: 'SemiBomItem',
-  tableName: 'semi_BOM_items',
   timestamps: true,
-  underscored: true,
-  indexes: [
-    {
-      fields: ['semi_bom_id']
-    },
-    {
-      fields: ['item_id', 'item_type']
-    }
-  ]
+  tableName: 'Semi_BOMItems'
 });
 
-// Define associations
-SemiBomItem.associate = (models) => {
-  SemiBomItem.belongsTo(models.SemiBom, {
-    foreignKey: 'semi_bom_id',
-    as: 'bom'
-  });
-
-  // Polymorphic association for item
-  SemiBomItem.belongsTo(models.Material, {
-    foreignKey: 'item_id',
-    constraints: false,
-    scope: {
-      item_type: 'material'
-    },
-    as: 'material'
-  });
-
-  SemiBomItem.belongsTo(models.SemiFinishedProduct, {
-    foreignKey: 'item_id',
-    constraints: false,
-    scope: {
-      item_type: 'semi_product'
-    },
-    as: 'semiProduct'
-  });
-};
-
-module.exports = SemiBomItem; 
+module.exports = SemiBomItem;

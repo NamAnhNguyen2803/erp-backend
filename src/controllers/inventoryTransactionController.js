@@ -1,17 +1,17 @@
-const { 
-  InventoryTransaction, 
-  Warehouse, 
-  Material, 
-  Product, 
-  SemiFinishedProduct, 
+const {
+  InventoryTransaction,
+  Warehouse,
+  Material,
+  Product,
+  SemiFinishedProduct,
   ProductInventory,
   MaterialInventory,
   SemiProductInventory,
-  User 
+  User
 } = require('../models');
 const { Op } = require('sequelize');
 const sequelize = require('../config/database');
-
+const inventoryHelper = require('../helper/inventoryHelper');
 // Helper function to get inventory model based on item type
 const getInventoryModel = (itemType) => {
   switch (itemType) {
@@ -35,25 +35,25 @@ const getItemFieldName = (itemType) => {
 // Import goods to warehouse
 exports.importGoods = async (req, res) => {
   const t = await sequelize.transaction();
-  
+
   try {
-    const { 
-      item_id, 
-      item_type, 
-      to_warehouse_id, 
-      quantity, 
-      reference_id, 
+    const {
+      item_id,
+      item_type,
+      to_warehouse_id,
+      quantity,
+      reference_id,
       reference_type,
       description
     } = req.body;
-    
+
     if (!item_id || !item_type || !to_warehouse_id || !quantity) {
       await t.rollback();
-      return res.status(400).json({ 
-        message: 'item_id, item_type, to_warehouse_id và quantity là bắt buộc' 
+      return res.status(400).json({
+        message: 'item_id, item_type, to_warehouse_id và quantity là bắt buộc'
       });
     }
-    
+
     // Validate item exist
     let item;
     if (item_type === 'material') {
@@ -63,19 +63,19 @@ exports.importGoods = async (req, res) => {
     } else if (item_type === 'semi_product') {
       item = await SemiFinishedProduct.findByPk(item_id);
     }
-    
+
     if (!item) {
       await t.rollback();
       return res.status(400).json({ message: 'Không tìm thấy item' });
     }
-    
+
     // Validate warehouse
     const warehouse = await Warehouse.findByPk(to_warehouse_id);
     if (!warehouse) {
       await t.rollback();
       return res.status(400).json({ message: 'Không tìm thấy kho' });
     }
-    
+
     // Create import transaction
     const transaction = await InventoryTransaction.create({
       from_warehouse_id: null,
@@ -89,13 +89,13 @@ exports.importGoods = async (req, res) => {
       reference_id,
       reference_type,
       description,
-      created_by: req.user ? req.user.user_id : null
+      created_by: req.user ? req.user.user_id : 1
     }, { transaction: t });
-    
+
     // Update inventory
     const InventoryModel = getInventoryModel(item_type);
     const itemField = getItemFieldName(item_type);
-    
+
     const [inventory] = await InventoryModel.findOrCreate({
       where: {
         warehouse_id: to_warehouse_id,
@@ -107,14 +107,14 @@ exports.importGoods = async (req, res) => {
       },
       transaction: t
     });
-    
-    await inventory.increment('quantity', { 
+
+    await inventory.increment('quantity', {
       by: quantity,
-      transaction: t 
+      transaction: t
     });
-    
+
     await t.commit();
-    
+
     return res.status(201).json({
       message: 'Nhập kho thành công',
       transaction_id: transaction.transaction_id
@@ -129,45 +129,45 @@ exports.importGoods = async (req, res) => {
 // Export goods from warehouse
 exports.exportGoods = async (req, res) => {
   const t = await sequelize.transaction();
-  
+
   try {
-    const { 
-      item_id, 
-      item_type, 
-      from_warehouse_id, 
-      quantity, 
-      reference_id, 
+    const {
+      item_id,
+      item_type,
+      from_warehouse_id,
+      quantity,
+      reference_id,
       reference_type,
       description
     } = req.body;
-    
+
     if (!item_id || !item_type || !from_warehouse_id || !quantity) {
       await t.rollback();
-      return res.status(400).json({ 
-        message: 'item_id, item_type, from_warehouse_id và quantity là bắt buộc' 
+      return res.status(400).json({
+        message: 'item_id, item_type, from_warehouse_id và quantity là bắt buộc'
       });
     }
-    
+
     // Check inventory availability
     const InventoryModel = getInventoryModel(item_type);
     const itemField = getItemFieldName(item_type);
-    
+
     const inventory = await InventoryModel.findOne({
       where: {
         [itemField]: item_id,
         warehouse_id: from_warehouse_id
       }
     });
-    
+
     if (!inventory || inventory.quantity < quantity) {
       await t.rollback();
-      return res.status(400).json({ 
+      return res.status(400).json({
         message: 'Không đủ hàng trong kho',
         available: inventory ? inventory.quantity : 0,
         requested: quantity
       });
     }
-    
+
     // Get item for unit info
     let item;
     if (item_type === 'material') {
@@ -177,7 +177,7 @@ exports.exportGoods = async (req, res) => {
     } else if (item_type === 'semi_product') {
       item = await SemiFinishedProduct.findByPk(item_id);
     }
-    
+
     // Create export transaction
     const transaction = await InventoryTransaction.create({
       from_warehouse_id,
@@ -193,15 +193,15 @@ exports.exportGoods = async (req, res) => {
       description,
       created_by: req.user ? req.user.user_id : null
     }, { transaction: t });
-    
+
     // Update inventory
-    await inventory.decrement('quantity', { 
+    await inventory.decrement('quantity', {
       by: quantity,
-      transaction: t 
+      transaction: t
     });
-    
+
     await t.commit();
-    
+
     return res.status(201).json({
       message: 'Xuất kho thành công',
       transaction_id: transaction.transaction_id
@@ -216,34 +216,34 @@ exports.exportGoods = async (req, res) => {
 // Transfer goods between warehouses
 exports.transferGoods = async (req, res) => {
   const t = await sequelize.transaction();
-  
+
   try {
-    const { 
-      item_id, 
-      item_type, 
-      from_warehouse_id, 
+    const {
+      item_id,
+      item_type,
+      from_warehouse_id,
       to_warehouse_id,
-      quantity, 
-      reference_id, 
+      quantity,
+      reference_id,
       reference_type,
       description
     } = req.body;
-    
+
     if (!item_id || !item_type || !from_warehouse_id || !to_warehouse_id || !quantity) {
       await t.rollback();
-      return res.status(400).json({ 
-        message: 'Tất cả các trường là bắt buộc' 
+      return res.status(400).json({
+        message: 'Tất cả các trường là bắt buộc'
       });
     }
-    
+
     if (from_warehouse_id === to_warehouse_id) {
       await t.rollback();
       return res.status(400).json({ message: 'Kho nguồn và kho đích không được giống nhau' });
     }
-    
+
     const InventoryModel = getInventoryModel(item_type);
     const itemField = getItemFieldName(item_type);
-    
+
     // Check inventory availability
     const fromInventory = await InventoryModel.findOne({
       where: {
@@ -251,16 +251,16 @@ exports.transferGoods = async (req, res) => {
         warehouse_id: from_warehouse_id
       }
     });
-    
+
     if (!fromInventory || fromInventory.quantity < quantity) {
       await t.rollback();
-      return res.status(400).json({ 
+      return res.status(400).json({
         message: 'Không đủ hàng trong kho nguồn',
         available: fromInventory ? fromInventory.quantity : 0,
         requested: quantity
       });
     }
-    
+
     // Get item for unit info
     let item;
     if (item_type === 'material') {
@@ -270,7 +270,7 @@ exports.transferGoods = async (req, res) => {
     } else if (item_type === 'semi_product') {
       item = await SemiFinishedProduct.findByPk(item_id);
     }
-    
+
     // Create transfer transaction
     const transaction = await InventoryTransaction.create({
       from_warehouse_id,
@@ -286,13 +286,13 @@ exports.transferGoods = async (req, res) => {
       description,
       created_by: req.user ? req.user.user_id : null
     }, { transaction: t });
-    
+
     // Update source inventory
-    await fromInventory.decrement('quantity', { 
+    await fromInventory.decrement('quantity', {
       by: quantity,
-      transaction: t 
+      transaction: t
     });
-    
+
     // Update destination inventory
     const [toInventory] = await InventoryModel.findOrCreate({
       where: {
@@ -305,14 +305,14 @@ exports.transferGoods = async (req, res) => {
       },
       transaction: t
     });
-    
-    await toInventory.increment('quantity', { 
+
+    await toInventory.increment('quantity', {
       by: quantity,
-      transaction: t 
+      transaction: t
     });
-    
+
     await t.commit();
-    
+
     return res.status(201).json({
       message: 'Chuyển kho thành công',
       transaction_id: transaction.transaction_id
@@ -324,14 +324,14 @@ exports.transferGoods = async (req, res) => {
   }
 };
 
-// Get all inventory transactions with pagination and filters
+
+// GET /api/inventory-transactions
 exports.getAllInventoryTransactions = async (req, res) => {
   try {
     const { page = 1, limit = 10, transaction_type, item_type, warehouse_id } = req.query;
     const offset = (page - 1) * limit;
-    
-    // Build filter condition
     const where = {};
+
     if (transaction_type) where.transaction_type = transaction_type;
     if (item_type) where.item_type = item_type;
     if (warehouse_id) {
@@ -340,73 +340,27 @@ exports.getAllInventoryTransactions = async (req, res) => {
         { to_warehouse_id: warehouse_id }
       ];
     }
-    
+
     const { count, rows } = await InventoryTransaction.findAndCountAll({
       where,
-      limit: parseInt(limit),
-      offset: parseInt(offset),
+      limit: +limit,
+      offset,
+      order: [['transaction_id', 'DESC']],
       include: [
-        {
-          model: Warehouse,
-          as: 'FromWarehouse',
-          attributes: ['warehouse_id', 'code', 'name']
-        },
-        {
-          model: Warehouse,
-          as: 'ToWarehouse',
-          attributes: ['warehouse_id', 'code', 'name']
-        },
-        {
-          model: User,
-          as: 'CreatedByUser',
-          attributes: ['user_id', 'username']
-        }
-      ],
-      order: [['transaction_id', 'DESC']]
+        { model: Warehouse, as: 'FromWarehouse', attributes: ['warehouse_id', 'code', 'name'] },
+        { model: Warehouse, as: 'ToWarehouse', attributes: ['warehouse_id', 'code', 'name'] },
+        { model: User, as: 'CreatedByUser', attributes: ['user_id', 'username'] },
+      ]
     });
-    
-    // Get item details for each transaction
-    const transactions = await Promise.all(rows.map(async (transaction) => {
-      const transactionObj = transaction.toJSON();
-      
-      // Get item details based on item_type
-      if (transaction.item_type === 'material') {
-        const material = await Material.findByPk(transaction.item_id);
-        if (material) {
-          transactionObj.item_details = {
-            code: material.code,
-            name: material.name,
-            unit: material.unit
-          };
-        }
-      } else if (transaction.item_type === 'product') {
-        const product = await Product.findByPk(transaction.item_id);
-        if (product) {
-          transactionObj.item_details = {
-            code: product.code,
-            name: product.name,
-            unit: product.unit
-          };
-        }
-      } else if (transaction.item_type === 'semi_product') {
-        const semiProduct = await SemiFinishedProduct.findByPk(transaction.item_id);
-        if (semiProduct) {
-          transactionObj.item_details = {
-            code: semiProduct.code,
-            name: semiProduct.name,
-            unit: semiProduct.unit
-          };
-        }
-      }
-      
-      return transactionObj;
-    }));
-    
+
+    // Dùng helper để map item_name cho từng transaction
+    const transactionsWithNames = await inventoryHelper.attachItemNames(rows);
+
     return res.status(200).json({
-      transactions,
+      transactions: transactionsWithNames,
       total: count,
-      page: parseInt(page),
-      limit: parseInt(limit)
+      page: +page,
+      limit: +limit
     });
   } catch (error) {
     console.error('Error getting inventory transactions:', error);
@@ -418,7 +372,7 @@ exports.getAllInventoryTransactions = async (req, res) => {
 exports.getTransactionById = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const transaction = await InventoryTransaction.findByPk(id, {
       include: [
         {
@@ -438,14 +392,14 @@ exports.getTransactionById = async (req, res) => {
         }
       ]
     });
-    
+
     if (!transaction) {
       return res.status(404).json({ message: 'Không tìm thấy giao dịch' });
     }
-    
+
     // Get item details
     const transactionObj = transaction.toJSON();
-    
+
     if (transaction.item_type === 'material') {
       const material = await Material.findByPk(transaction.item_id);
       if (material) {
@@ -474,16 +428,18 @@ exports.getTransactionById = async (req, res) => {
         };
       }
     }
-    
+
     return res.status(200).json(transactionObj);
   } catch (error) {
     console.error('Error getting transaction:', error);
     return res.status(500).json({ message: 'Lỗi server' });
   }
 };
+
 exports.getInventorySummary = async (req, res) => {
   try {
-    const { warehouse_id, item_type } = req.query;
+    const { warehouse_id, item_type, page = 1, limit = 10 } = req.query;
+    const offset = (page - 1) * limit;
 
     const inventoryTypes = [
       {
@@ -503,7 +459,7 @@ exports.getInventorySummary = async (req, res) => {
           { model: Warehouse, as: 'warehouse', attributes: ['warehouse_id', 'code', 'name'] },
           { model: Product, as: 'product', attributes: ['product_id', 'code', 'name', 'unit'] }
         ]
-      },      
+      },
       {
         key: 'semi_product',
         model: SemiProductInventory,
@@ -516,27 +472,38 @@ exports.getInventorySummary = async (req, res) => {
     ];
 
     const result = [];
+    let totalCount = 0;
 
     for (const type of inventoryTypes) {
       if (!item_type || item_type === type.key) {
         const where = {};
         if (warehouse_id) where.warehouse_id = warehouse_id;
 
-        const items = await type.model.findAll({
+        const { count, rows } = await type.model.findAndCountAll({
           where,
-          include: type.includeModels
+          include: type.includeModels,
+          limit: parseInt(limit),
+          offset: parseInt(offset),
+          order: [['id', 'DESC']] // Assuming 'id' as the default sorting field; adjust if needed
         });
 
         result.push(
-          ...items.map(inv => ({
+          ...rows.map(inv => ({
             ...inv.toJSON(),
             item_type: type.key
           }))
         );
+
+        totalCount += count;
       }
     }
 
-    return res.status(200).json(result);
+    return res.status(200).json({
+      inventory: result,
+      total: totalCount,
+      page: parseInt(page),
+      limit: parseInt(limit)
+    });
   } catch (error) {
     console.error('🔥 Error getting inventory summary:', error);
     return res.status(500).json({ message: 'Lỗi server' });

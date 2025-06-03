@@ -1,9 +1,9 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const ManufactureOrder = require('./ManufactureOrder');
+const ManufacturingOrder = require('./ManufacturingOrder');
 const User = require('./User');
 
-const ManufactureCost = sequelize.define('ManufactureCost', {
+const ManufacturingCost = sequelize.define('ManufacturingCost', {
   cost_id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
@@ -14,7 +14,7 @@ const ManufactureCost = sequelize.define('ManufactureCost', {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: ManufactureOrder,
+      model: ManufacturingOrder,
       key: 'order_id'
     },
     field: 'order_id'
@@ -52,15 +52,15 @@ const ManufactureCost = sequelize.define('ManufactureCost', {
 });
 
 // Thêm aliases cho các mối quan hệ
-ManufactureCost.associate = function(models) {
-  ManufactureCost.belongsTo(models.ManufactureOrder, { 
+ManufacturingCost.associate = function(models) {
+  ManufacturingCost.belongsTo(models.ManufacturingOrder, { 
     foreignKey: 'order_id'
   });
   
-  ManufactureCost.belongsTo(models.User, { 
+  ManufacturingCost.belongsTo(models.User, { 
     foreignKey: 'created_by',
     as: 'CreatedByUser'
   });
 };
 
-module.exports = ManufactureCost; 
+module.exports = ManufacturingCost; 

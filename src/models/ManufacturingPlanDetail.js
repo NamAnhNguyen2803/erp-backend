@@ -1,6 +1,6 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const ManufacturePlan = require('./ManufacturePlan');
+const ManufacturingPlan = require('./ManufacturingPlan');
 const Product = require('./Product');
 
 const ManufacturingPlanDetail = sequelize.define('ManufacturingPlanDetail', {
@@ -13,7 +13,7 @@ const ManufacturingPlanDetail = sequelize.define('ManufacturingPlanDetail', {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: ManufacturePlan,
+      model: ManufacturingPlan,
       key: 'plan_id'
     }
   },

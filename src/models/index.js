@@ -21,19 +21,21 @@ const SemiFinishedProduct = require('./SemiFinishedProduct');
 const Warehouse = require('./Warehouse');
 const BOM = require('./BOM');
 const BOMItem = require('./BOMItem');
-const ManufacturePlan = require('./ManufacturePlan');
+const SemiBom = require('./SemiBom');
+const SemiBomItem = require('./SemiBomItem');
+const ManufacturingPlan = require('./ManufacturingPlan');
 const ManufacturingPlanDetail = require('./ManufacturingPlanDetail');
-const ManufactureOrder = require('./ManufactureOrder');
-const WorkStation = require('./WorkStation');
-const ManufactureStep = require('./ManufactureStep');
-const WorkOrder = require('./WorkOrder');
+const ManufacturingOrder = require('./ManufacturingOrder');
+const ManufacturingOrderDetail = require('./ManufacturingOrderDetail');
 const MaterialRequirement = require('./MaterialRequirement');
 const InventoryTransaction = require('./InventoryTransaction');
 const ProductInventory = require('./ProductInventory');
 const MaterialInventory = require('./MaterialInventory');
 const SemiProductInventory = require('./SemiProductInventory');
-const ManufactureCost = require('./ManufactureCost');
-const ManufactureLog = require('./ManufactureLog');
+const ManufacturingCost = require('./ManufacturingCost');
+const ManufacturingLog = require('./ManufacturingLog');
+const WorkOrder = require('./WorkOrder');
+const MaterialStatus = require('./MaterialStatus');
 
 // Define relationships after all models are loaded
 const defineAssociations = () => {
@@ -49,36 +51,47 @@ const defineAssociations = () => {
     // BOMItem relationships
     BOMItem.belongsTo(BOM, { foreignKey: 'bom_id' });
     BOM.hasMany(BOMItem, { foreignKey: 'bom_id' });
-    BOMItem.belongsTo(Material, { foreignKey: 'material_id', as: 'Material' });
+    BOMItem.belongsTo(Material, { foreignKey: 'material_id' });
     Material.hasMany(BOMItem, { foreignKey: 'material_id' });
 
-    // ManufacturePlan relationships
-    ManufacturePlan.belongsTo(User, { foreignKey: 'created_by' });
-    User.hasMany(ManufacturePlan, { foreignKey: 'created_by' });
+
+    SemiBomItem.belongsTo(SemiBom, {
+      foreignKey: 'semi_bom_id',
+      as: 'semiBom'
+    });
+
+    SemiBomItem.belongsTo(Material, {
+      foreignKey: 'material_id',
+      as: 'material'
+    });
+
+    // ManufacturingPlan relationships
+    ManufacturingPlan.belongsTo(User, { foreignKey: 'created_by' });
+    User.hasMany(ManufacturingPlan, { foreignKey: 'created_by' });
 
     // ManufacturingPlanDetail relationships
-    ManufacturingPlanDetail.belongsTo(ManufacturePlan, { foreignKey: 'plan_id' });
-    ManufacturePlan.hasMany(ManufacturingPlanDetail, { foreignKey: 'plan_id' });
+    ManufacturingPlanDetail.belongsTo(ManufacturingPlan, { foreignKey: 'plan_id' });
+    ManufacturingPlan.hasMany(ManufacturingPlanDetail, { foreignKey: 'plan_id' });
     ManufacturingPlanDetail.belongsTo(Product, { foreignKey: 'product_id' });
     Product.hasMany(ManufacturingPlanDetail, { foreignKey: 'product_id' });
 
-    // ManufactureOrder relationships
-    ManufactureOrder.belongsTo(ManufacturePlan, { foreignKey: 'plan_id' });
-    ManufacturePlan.hasMany(ManufactureOrder, { foreignKey: 'plan_id' });
-    ManufactureOrder.belongsTo(Product, { foreignKey: 'product_id' });
-    Product.hasMany(ManufactureOrder, { foreignKey: 'product_id' });
-    ManufactureOrder.belongsTo(BOM, { foreignKey: 'bom_id' });
-    BOM.hasMany(ManufactureOrder, { foreignKey: 'bom_id' });
-    ManufactureOrder.belongsTo(User, { foreignKey: 'created_by' });
-    User.hasMany(ManufactureOrder, { foreignKey: 'created_by' });
+    //ManufacturingOrder relationships
+    ManufacturingOrder.belongsTo(ManufacturingPlan, { foreignKey: 'plan_id' });
+    ManufacturingPlan.hasMany(ManufacturingOrder, { foreignKey: 'plan_id' });
+    ManufacturingOrder.belongsTo(Product, { foreignKey: 'product_id' });
+    Product.hasMany(ManufacturingOrder, { foreignKey: 'product_id' });
+    ManufacturingOrder.belongsTo(User, { foreignKey: 'created_by' });
+    User.hasMany(ManufacturingOrder, { foreignKey: 'created_by' });
 
+
+    ManufacturingOrder.hasMany(ManufacturingOrderDetail, { foreignKey: 'order_id' });
+    ManufacturingOrderDetail.belongsTo(ManufacturingOrder, { foreignKey: 'order_id' });
+
+    ManufacturingOrderDetail.hasMany(WorkOrder, { foreignKey: 'detail_id' });
+    WorkOrder.belongsTo(ManufacturingOrderDetail, { foreignKey: 'detail_id' });
     // WorkOrder relationships
-    WorkOrder.belongsTo(ManufactureOrder, { foreignKey: 'order_id' });
-    ManufactureOrder.hasMany(WorkOrder, { foreignKey: 'order_id' });
-    WorkOrder.belongsTo(ManufactureStep, { foreignKey: 'step_id' });
-    ManufactureStep.hasMany(WorkOrder, { foreignKey: 'step_id' });
-    WorkOrder.belongsTo(WorkStation, { foreignKey: 'station_id' });
-    WorkStation.hasMany(WorkOrder, { foreignKey: 'station_id' });
+    WorkOrder.belongsTo(ManufacturingOrder, { foreignKey: 'order_id' });
+    ManufacturingOrder.hasMany(WorkOrder, { foreignKey: 'order_id' });
     WorkOrder.belongsTo(SemiFinishedProduct, { foreignKey: 'semi_product_id' });
     SemiFinishedProduct.hasMany(WorkOrder, { foreignKey: 'semi_product_id' });
     WorkOrder.belongsTo(User, { foreignKey: 'assigned_to', as: 'AssignedUser' });
@@ -93,15 +106,17 @@ const defineAssociations = () => {
     // Product Inventory relationships  
     Product.hasMany(ProductInventory, { foreignKey: 'product_id', as: 'ProductInventories' });
     ProductInventory.belongsTo(Product, { foreignKey: 'product_id' });
-    
-    ProductInventory.belongsTo(Warehouse, { foreignKey: 'warehouse_id'});
-    Warehouse.hasMany(ProductInventory, { foreignKey: 'warehouse_id', as: 'ProductInventories' }); 
+
+    ProductInventory.belongsTo(Warehouse, { foreignKey: 'warehouse_id' });
+    Warehouse.hasMany(ProductInventory, { foreignKey: 'warehouse_id', as: 'ProductInventories' });
 
     // Material Inventory relationships
     Material.hasMany(MaterialInventory, { foreignKey: 'material_id' });
     MaterialInventory.belongsTo(Material, { foreignKey: 'material_id' });
-    MaterialInventory.belongsTo(Warehouse, { foreignKey: 'warehouse_id' });
+
     Warehouse.hasMany(MaterialInventory, { foreignKey: 'warehouse_id' });
+    MaterialInventory.belongsTo(Warehouse, { foreignKey: 'warehouse_id' });
+
 
     // Semi Product Inventory relationships
     SemiFinishedProduct.hasMany(SemiProductInventory, { foreignKey: 'semi_product_id' });
@@ -118,17 +133,24 @@ const defineAssociations = () => {
     InventoryTransaction.belongsTo(User, { foreignKey: 'created_by', as: 'CreatedByUser' });
     User.hasMany(InventoryTransaction, { foreignKey: 'created_by', as: 'CreatedTransactions' });
 
-    // ManufactureCost relationships
-    ManufactureCost.belongsTo(ManufactureOrder, { foreignKey: 'order_id' });
-    ManufactureOrder.hasMany(ManufactureCost, { foreignKey: 'order_id' });
-    ManufactureCost.belongsTo(User, { foreignKey: 'created_by', as: 'CreatedByUser' });
-    User.hasMany(ManufactureCost, { foreignKey: 'created_by' });
+    //ManufacturingCost relationships
+    ManufacturingCost.belongsTo(ManufacturingOrder, { foreignKey: 'order_id' });
+    ManufacturingOrder.hasMany(ManufacturingCost, { foreignKey: 'order_id' });
+    ManufacturingCost.belongsTo(User, { foreignKey: 'created_by', as: 'CreatedByUser' });
+    User.hasMany(ManufacturingCost, { foreignKey: 'created_by' });
 
-    // ManufactureLog relationships
-    ManufactureLog.belongsTo(WorkOrder, { foreignKey: 'work_id' });
-    WorkOrder.hasMany(ManufactureLog, { foreignKey: 'work_id' });
-    ManufactureLog.belongsTo(User, { foreignKey: 'created_by', as: 'CreatedByUser' });
-    User.hasMany(ManufactureLog, { foreignKey: 'created_by' });
+    //ManufacturingLog relationships
+    ManufacturingLog.belongsTo(WorkOrder, { foreignKey: 'work_id' });
+    WorkOrder.hasMany(ManufacturingLog, { foreignKey: 'work_id' });
+    ManufacturingLog.belongsTo(User, { foreignKey: 'created_by', as: 'CreatedByUser' });
+    User.hasMany(ManufacturingLog, { foreignKey: 'created_by' });
+
+
+    // MaterialStatus relationships
+    MaterialStatus.belongsTo(WorkOrder, { foreignKey: 'work_id' });
+    WorkOrder.hasMany(MaterialStatus, { foreignKey: 'work_id' });
+    MaterialStatus.belongsTo(Material, { foreignKey: 'material_id' });
+    Material.hasMany(MaterialStatus, { foreignKey: 'material_id' });
 
     console.log('Model associations defined successfully');
   } catch (error) {
@@ -142,13 +164,9 @@ defineAssociations();
 // Hàm đồng bộ database
 const syncDatabase = async () => {
   try {
-    // Thiết lập các tùy chọn đồng bộ cơ sở dữ liệu
     const syncOptions = {
       alter: true,
     };
-
-    // console.log('Starting database synchronization with options:', syncOptions);
-
     await sequelize.sync();
     console.log('Database synchronized successfully');
   } catch (error) {
@@ -167,17 +185,17 @@ module.exports = {
   Warehouse,
   BOM,
   BOMItem,
-  ManufacturePlan,
+  ManufacturingPlan,
   ManufacturingPlanDetail,
-  ManufactureOrder,
-  WorkStation,
-  ManufactureStep,
+  ManufacturingOrder,
+  ManufacturingOrderDetail,
   WorkOrder,
   MaterialRequirement,
   InventoryTransaction,
-  ManufactureCost,
-  ManufactureLog,
+  ManufacturingCost,
+  ManufacturingLog,
   ProductInventory,
   MaterialInventory,
-  SemiProductInventory
+  SemiProductInventory,
+  MaterialStatus,
 }; 

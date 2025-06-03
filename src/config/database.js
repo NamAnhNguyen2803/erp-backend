@@ -4,7 +4,7 @@ require('dotenv').config();
 // Sử dụng biến môi trường hoặc thông tin mặc định
 const database = process.env.DB_NAME || 'erp_db';
 const username = process.env.DB_USER || 'root';
-const password = process.env.DB_PASSWORD || '';
+const password = 'NewStrongPassword';
 const host = process.env.DB_HOST || '127.0.0.1';
 const port = process.env.DB_PORT || 3306;
 

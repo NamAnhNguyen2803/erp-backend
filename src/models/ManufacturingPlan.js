@@ -2,7 +2,7 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const User = require('./User');
 
-const ManufacturePlan = sequelize.define('ManufacturePlan', {
+const ManufacturingPlan = sequelize.define('ManufacturingPlan', {
   plan_id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
@@ -23,7 +23,7 @@ const ManufacturePlan = sequelize.define('ManufacturePlan', {
   },
   status: {
     type: DataTypes.STRING(20),
-    allowNull: false,
+    allowNull: false, 
     defaultValue: 'draft'
   },
   created_by: {
@@ -52,9 +52,9 @@ const ManufacturePlan = sequelize.define('ManufacturePlan', {
     {
       unique: true,
       fields: ['plan_code'],
-      name: 'manufacturing_plans_plan_code_unique'
+      name: 'manufacturing_plan_plan_code_unique'
     }
   ]
 });
 
-module.exports = ManufacturePlan; 
+module.exports = ManufacturingPlan; 

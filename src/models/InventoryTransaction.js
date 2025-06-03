@@ -1,77 +1,45 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
-const Warehouse = require('./Warehouse');
-const User = require('./User');
+// InventoryTransaction.js
+const { DataTypes, Sequelize } = require('sequelize');
+const sequelize = require('../config/database'); // Đường dẫn config DB của bạn
 
 const InventoryTransaction = sequelize.define('InventoryTransaction', {
   transaction_id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true,
-    field: 'transaction_id'
   },
   transaction_type: {
-    type: DataTypes.STRING(20),
+    type: DataTypes.STRING,
     allowNull: false,
-    comment: 'import, export, transfer',
-    field: 'transaction_type'
+  },
+  item_type: {
+    type: DataTypes.STRING,
+    allowNull: false,
   },
   item_id: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    field: 'item_id'
-  },
-  item_type: {
-    type: DataTypes.STRING(20),
-    allowNull: false,
-    comment: 'material, product, semi_finished',
-    field: 'item_type'
   },
   from_warehouse_id: {
     type: DataTypes.INTEGER,
-    references: {
-      model: Warehouse,
-      key: 'warehouse_id'
-    },
-    field: 'from_warehouse_id'
+    allowNull: true,
   },
   to_warehouse_id: {
     type: DataTypes.INTEGER,
-    references: {
-      model: Warehouse,
-      key: 'warehouse_id'
-    },
-    field: 'to_warehouse_id'
+    allowNull: true,
   },
   quantity: {
-    type: DataTypes.DECIMAL(10, 2),
+    type: DataTypes.FLOAT,
     allowNull: false,
-    field: 'quantity'
-  },
-  transaction_date: {
-    type: DataTypes.DATE,
-    allowNull: false,
-    field: 'transaction_date'
-  },
-  reference_id: {
-    type: DataTypes.INTEGER,
-    field: 'reference_id'
-  },
-  reference_type: {
-    type: DataTypes.STRING(50),
-    field: 'reference_type'
   },
   created_by: {
     type: DataTypes.INTEGER,
-    references: {
-      model: User,
-      key: 'user_id'
-    },
-    field: 'created_by'
-  }
+    allowNull: false,
+  },
 }, {
+  tableName: 'inventory_transactions',
   timestamps: true,
-  tableName: 'inventory_transactions'
+  underscored: true,
 });
 
-module.exports = InventoryTransaction; 
+module.exports = InventoryTransaction;

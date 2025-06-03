@@ -36,20 +36,20 @@ exports.getAllInventory = async (req, res) => {
 };
 
   
-
-
 // Tồn kho theo loại: Nguyên vật liệu
 exports.getInventoryByMaterial = async (req, res) => {
   try {
     const materials = await MaterialInventory.findAll({
       include: [
-        { model: Material, as: 'Material' },     // Kiểm tra alias tương tự cho Material
-        { model: Warehouse, as: 'Warehouse' }
+        { model: Material },     
+        { model: Warehouse }
       ]
     });
     res.json(materials);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.log(MaterialInventory.associations);
+    console.error('Error getting Material:', err);
+    return res.status(500).json({ message: 'Internal server error' });
   }
 };
 

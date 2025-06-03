@@ -15,7 +15,7 @@ MaterialInventory.init({
     allowNull: false,
     references: {
       model: 'materials',
-      key: 'id'
+      key: 'material_id'
     }
   },
   warehouse_id: {
@@ -23,7 +23,7 @@ MaterialInventory.init({
     allowNull: false,
     references: {
       model: 'warehouses',
-      key: 'id'
+      key: 'warehouse_id'
     }
   },
   quantity: {

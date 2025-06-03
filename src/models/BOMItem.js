@@ -21,8 +21,8 @@ const BOMItem = sequelize.define('BOMItem', {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'Products',
-      key: 'product_id'
+      model: 'Materials', // Không phải 'Products'
+      key: 'material_id',
     }
   },
   item_type: {

@@ -8,12 +8,13 @@ const bomController = require('../controllers/bomController');
 router.get('/', bomController.getAllBoms);
 
 // GET /api/v1/boms/:bom_id - Get BOM by ID with items
-router.get('/:bom_id', bomController.getBomById);
+router.get('/:id', bomController.getBomDetails);
 
 // POST /api/v1/boms - Create a new BOM
 router.post('/', bomController.createBom);
 
 // PUT /api/v1/boms/:bom_id - Update BOM
 router.put('/:bom_id', bomController.updateBom);
+router.delete('/:bom_id', bomController.deleteBom);
 
 module.exports = router; 

@@ -43,84 +43,69 @@ exports.getAllBoms = async (req, res) => {
 };
 
 // Get BOM by ID with items
-exports.getBomById = async (req, res) => {
+exports.getBomDetails = async (req, res) => {
   try {
-    const { bom_id } = req.params;
-    const bom = await BOM.findByPk(bom_id, {
+    const bomId = req.params.id;
+    const workQuantity = req.query.work_quantity || 1; // có thể truyền từ FE, mặc định 1
+
+    // Lấy BOM kèm Product
+    const bom = await BOM.findByPk(bomId, {
       include: [
-        {
-          model: Product,
-          attributes: ['product_id', 'code', 'name', 'unit']
-        },
-        {
-          model: User,
-          attributes: ['user_id', 'username']
-        }
+        { model: Product },
+        { model: BOMItem }
       ]
     });
-    
+
     if (!bom) {
       return res.status(404).json({ message: 'BOM not found' });
     }
-    
-    // Get BOM items
-    const bomItems = await BOMItem.findAll({
-      where: { bom_id },
-      order: [['item_id', 'ASC']]
-    });
-    
-    // Get details for each item based on item_type
+
+    // Fetch chi tiết cho các BOM item
     const bomItemsWithDetails = await Promise.all(
-      bomItems.map(async (item) => {
-        const bomItem = item.toJSON();
-        
-        try {
-          if (bomItem.item_type === 'material') {
-            const material = await Material.findByPk(bomItem.material_id);
-            if (material) {
-              bomItem.material_details = {
-                code: material.code,
-                name: material.name,
-                unit: material.unit
-              };
-            }
-          } else if (bomItem.item_type === 'semi_product') {
-            const semiProduct = await SemiFinishedProduct.findByPk(bomItem.material_id);
-            if (semiProduct) {
-              bomItem.material_details = {
-                code: semiProduct.code,
-                name: semiProduct.name,
-                unit: semiProduct.unit
-              };
-            }
-          } else if (bomItem.item_type === 'product') {
-            const product = await Product.findByPk(bomItem.material_id);
-            if (product) {
-              bomItem.material_details = {
-                code: product.code,
-                name: product.name,
-                unit: product.unit
-              };
-            }
-          }
-        } catch (error) {
-          console.error(`Error fetching details for material: ${bomItem.material_id}`, error);
+      bom.BOMItems.map(async (item) => {
+        const plainItem = item.toJSON();
+
+        let materialDetails = null;
+
+        if (plainItem.item_type === 'material') {
+          materialDetails = await Material.findByPk(plainItem.material_id);
+        } else if (plainItem.item_type === 'semi_product') {
+          materialDetails = await SemiFinishedProduct.findByPk(plainItem.material_id);
+        } else if (plainItem.item_type === 'product') {
+          materialDetails = await Product.findByPk(plainItem.material_id);
         }
-        
-        return bomItem;
+
+        return {
+          ...plainItem,
+          material_details: materialDetails
+            ? {
+                code: materialDetails.code,
+                name: materialDetails.name,
+                unit: materialDetails.unit
+              }
+            : null,
+          required_quantity: plainItem.quantity * workQuantity,
+        };
       })
     );
-    
-    // Combine BOM with its items
-    const result = bom.toJSON();
-    result.items = bomItemsWithDetails;
-    
-    return res.status(200).json(result);
+
+    // Gộp dữ liệu trả về
+    return res.status(200).json({
+      product: {
+        id: bom.Product.id,
+        code: bom.Product.code,
+        name: bom.Product.name,
+        unit: bom.Product.unit
+      },
+      bom_version: bom.version,
+      items: bomItemsWithDetails
+    });
   } catch (error) {
     console.error('Error getting BOM:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
+
 
 // Create new BOM with items
 exports.createBom = async (req, res) => {
@@ -333,3 +318,32 @@ exports.deductMaterialsFromBom = async (bom_id, quantity, t) => {
     throw error;
   }
 }; 
+
+// Delete BOM by ID
+exports.deleteBom = async (req, res) => {
+  const t = await sequelize.transaction();
+
+  try {
+    const { bom_id } = req.params;
+
+    // Kiểm tra tồn tại BOM
+    const bom = await BOM.findByPk(bom_id);
+    if (!bom) {
+      await t.rollback();
+      return res.status(404).json({ message: 'BOM not found' });
+    }
+
+    // Xóa các BOM items trước
+    await BOMItem.destroy({ where: { bom_id }, transaction: t });
+
+    // Xóa BOM
+    await BOM.destroy({ where: { bom_id }, transaction: t });
+
+    await t.commit();
+    return res.status(200).json({ message: 'BOM deleted successfully' });
+  } catch (error) {
+    await t.rollback();
+    console.error('Error deleting BOM:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};

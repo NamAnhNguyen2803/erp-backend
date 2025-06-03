@@ -1,11 +1,10 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-const ManufacturePlan = require('./ManufacturePlan');
-const Product = require('./Product');
+const ManufacturingPlan = require('./ManufacturingPlan');
 const BOM = require('./BOM');
 const User = require('./User');
 
-const ManufactureOrder = sequelize.define('ManufactureOrder', {
+const ManufacturingOrder = sequelize.define('ManufacturingOrder', {
   order_id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
@@ -16,31 +15,8 @@ const ManufactureOrder = sequelize.define('ManufactureOrder', {
     allowNull: false,
     unique: true
   },
-  plan_id: {
-    type: DataTypes.INTEGER,
-    references: {
-      model: ManufacturePlan,
-      key: 'plan_id'
-    }
-  },
-  product_id: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    references: {
-      model: Product,
-      key: 'product_id'
-    }
-  },
-  bom_id: {
-    type: DataTypes.INTEGER,
-    references: {
-      model: BOM,
-      key: 'bom_id'
-    }
-  },
-  quantity: {
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: false
+    description: {
+    type: DataTypes.TEXT
   },
   start_date: {
     type: DataTypes.DATE
@@ -49,12 +25,9 @@ const ManufactureOrder = sequelize.define('ManufactureOrder', {
     type: DataTypes.DATE
   },
   status: {
-    type: DataTypes.STRING(20),
+    type: DataTypes.ENUM('pending','approved', 'in_progress', 'completed', 'cancelled'),
     allowNull: false,
-    defaultValue: 'draft'
-  },
-  total_cost: {
-    type: DataTypes.DECIMAL(15, 2)
+    defaultValue: 'pending'
   },
   created_by: {
     type: DataTypes.INTEGER,
@@ -73,4 +46,4 @@ const ManufactureOrder = sequelize.define('ManufactureOrder', {
   tableName: 'ManufacturingOrders'
 });
 
-module.exports = ManufactureOrder; 
+module.exports = ManufacturingOrder; 
