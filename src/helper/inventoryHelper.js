@@ -37,5 +37,16 @@ async function inventoryHelper(transactions) {
     return t;
   });
 }
-
-module.exports = { inventoryHelper };
+async function findItemByType(type, id) {
+  switch (type) {
+    case 'material':
+      return await Material.findByPk(id);
+    case 'product':
+      return await Product.findByPk(id);
+    case 'semi_finished_product':
+      return await SemiFinishedProduct.findByPk(id);
+    default:
+      throw new Error(`Unknown item type: ${type}`);
+  }
+}
+module.exports = { inventoryHelper,  findItemByType };

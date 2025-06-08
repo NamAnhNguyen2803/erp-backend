@@ -5,7 +5,6 @@ const inventoryTransactionController = require('../controllers/inventoryTransact
 // const { authenticateUser, authorizeManager } = require('../middleware/authMiddleware');
 
 // GET /api/v1/transactions
-// router.get('/', inventoryTransactionController.getAllInventoryTransactions);
 router.post('/import', inventoryTransactionController.importGoods);
 router.post('/export', inventoryTransactionController.exportGoods);
 router.post('/transfer', inventoryTransactionController.transferGoods);

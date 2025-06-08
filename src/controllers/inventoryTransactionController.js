@@ -12,6 +12,7 @@ const {
 const { Op } = require('sequelize');
 const sequelize = require('../config/database');
 const inventoryHelper = require('../helper/inventoryHelper');
+const { findItemByType } = require('../helper/inventoryHelper');
 // Helper function to get inventory model based on item type
 const getInventoryModel = (itemType) => {
   switch (itemType) {
@@ -284,7 +285,7 @@ exports.transferGoods = async (req, res) => {
       reference_id,
       reference_type,
       description,
-      created_by: req.user ? req.user.user_id : null
+      created_by: req.user ? req.user.user_id : 1
     }, { transaction: t });
 
     // Update source inventory
@@ -508,4 +509,112 @@ exports.getInventorySummary = async (req, res) => {
     console.error('🔥 Error getting inventory summary:', error);
     return res.status(500).json({ message: 'Lỗi server' });
   }
+};
+
+exports.importGoodsLogic = async (data, t) => {
+  const {
+    item_id,
+    item_type,
+    to_warehouse_id,
+    quantity,
+    reference_id,
+    reference_type,
+    description,
+    user_id
+  } = data;
+
+  if (!item_id || !item_type || !to_warehouse_id || !quantity) {
+    throw new Error('Thiếu thông tin nhập kho');
+  }
+
+  // Tương tự validate và xử lý như importGoods, dùng transaction t truyền vào
+  // Không commit/rollback ở đây
+  // Nếu lỗi, throw thẳng ra để bắt ở complete()
+  // ...
+
+  // Ví dụ đơn giản
+  const item = await findItemByType(item_type, item_id, t);
+  if (!item) throw new Error('Không tìm thấy item');
+
+  const warehouse = await Warehouse.findByPk(to_warehouse_id, { transaction: t });
+  if (!warehouse) throw new Error('Không tìm thấy kho');
+
+  await InventoryTransaction.create({
+    from_warehouse_id: null,
+    to_warehouse_id,
+    item_id,
+    item_type,
+    quantity,
+    unit: item.unit,
+    transaction_date: new Date(),
+    transaction_type: 'import',
+    reference_id,
+    reference_type,
+    description,
+    created_by: user_id || 1
+  }, { transaction: t });
+
+  const InventoryModel = getInventoryModel(item_type);
+  const itemField = getItemFieldName(item_type);
+
+  const [inventory] = await InventoryModel.findOrCreate({
+    where: { warehouse_id: to_warehouse_id, [itemField]: item_id },
+    defaults: { quantity: 0, unit: item.unit },
+    transaction: t
+  });
+
+  await inventory.increment('quantity', { by: quantity, transaction: t });
+
+  return true;
+};
+
+exports.exportGoodsLogic = async (data, t) => {
+  const {
+    item_id,
+    item_type,
+    from_warehouse_id,
+    quantity,
+    reference_id,
+    reference_type,
+    description,
+    user_id
+  } = data;
+
+  if (!item_id || !item_type || !from_warehouse_id || !quantity) {
+    throw new Error('Thiếu thông tin xuất kho');
+  }
+
+  const InventoryModel = getInventoryModel(item_type);
+  const itemField = getItemFieldName(item_type);
+
+  const inventory = await InventoryModel.findOne({
+    where: { warehouse_id: from_warehouse_id, [itemField]: item_id },
+    transaction: t
+  });
+
+  if (!inventory || inventory.quantity < quantity) {
+    throw new Error(`Không đủ hàng trong kho (còn ${inventory ? inventory.quantity : 0})`);
+  }
+
+  const item = await findItemByType(item_type, item_id, t);
+  if (!item) throw new Error('Không tìm thấy item');
+
+  await InventoryTransaction.create({
+    from_warehouse_id,
+    to_warehouse_id: null,
+    item_id,
+    item_type,
+    quantity,
+    unit: item.unit,
+    transaction_date: new Date(),
+    transaction_type: 'export',
+    reference_id,
+    reference_type,
+    description,
+    created_by: user_id || null
+  }, { transaction: t });
+
+  await inventory.decrement('quantity', { by: quantity, transaction: t });
+
+  return true;
 };
