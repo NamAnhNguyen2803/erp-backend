@@ -7,7 +7,7 @@ const { sequelize, syncDatabase } = require('./src/models');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT || 3030;
 
 // Import routes
 const authRoutes = require('./src/routes/auth');

@@ -14,7 +14,7 @@ ProductInventory.init({
     allowNull: false,
     references: {
       model: 'products',
-      key: 'id'
+      key: 'product_id'
     }
   },
   warehouse_id: {
@@ -22,7 +22,7 @@ ProductInventory.init({
     allowNull: false,
     references: {
       model: 'warehouses',
-      key: 'id'
+      key: 'warehouse_id'
     }
   },
   quantity: {

@@ -78,7 +78,7 @@ exports.createMaterial = async (req, res) => {
       max_stock,// Initialize with 0 stock
       unit_price,
       supplier,
-      status
+      status :'active' 
     });
 
     return res.status(201).json(newMaterial);

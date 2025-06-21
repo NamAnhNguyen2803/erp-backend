@@ -2,12 +2,11 @@ const Sequelize = require('sequelize');
 require('dotenv').config();
 
 // Sử dụng biến môi trường hoặc thông tin mặc định
-const database = process.env.DB_NAME || 'erp_db';
+const database = process.env.DB_NAME ;
 const username = process.env.DB_USER || 'root';
-const password = 'NewStrongPassword';
-const host = process.env.DB_HOST || '127.0.0.1';
-const port = process.env.DB_PORT || 3306;
-
+const host = process.env.DB_HOST ;
+const port = process.env.DB_PORT ;
+password = process.env.DB_PASSWORD ;
 // Cấu hình pool cho kết nối database
 const pool = {
   max: 10,
@@ -20,7 +19,7 @@ const pool = {
 const sequelize = new Sequelize(database, username, password, {
   host,
   port,
-  dialect: 'mysql',
+  dialect: 'postgres',
   pool,
   logging: console.log,
   define: {

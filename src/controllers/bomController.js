@@ -7,11 +7,11 @@ exports.getAllBoms = async (req, res) => {
   try {
     const { page = 1, limit = 10, product_id, status } = req.query;
     const offset = (page - 1) * limit;
-    
+
     // Build filter condition
     const where = {};
     if (product_id) where.product_id = product_id;
-    
+
     // Find BOMs with pagination
     const { count, rows } = await BOM.findAndCountAll({
       where,
@@ -25,11 +25,20 @@ exports.getAllBoms = async (req, res) => {
         {
           model: User,
           attributes: ['user_id', 'username']
+        },
+        {
+          model: BOMItem,
+          include: [
+            {
+              model: Material,
+              attributes: ['material_id', 'code', 'name']
+            }
+          ]
         }
       ],
       order: [['bom_id', 'DESC']]
     });
-    
+
     return res.status(200).json({
       boms: rows,
       total: count,
@@ -79,10 +88,10 @@ exports.getBomDetails = async (req, res) => {
           ...plainItem,
           material_details: materialDetails
             ? {
-                code: materialDetails.code,
-                name: materialDetails.name,
-                unit: materialDetails.unit
-              }
+              code: materialDetails.code,
+              name: materialDetails.name,
+              unit: materialDetails.unit
+            }
             : null,
           required_quantity: plainItem.quantity * workQuantity,
         };
@@ -111,24 +120,24 @@ exports.getBomDetails = async (req, res) => {
 exports.createBom = async (req, res) => {
   // Transaction to ensure data consistency
   const t = await sequelize.transaction();
-  
+
   try {
     const { product_id, version, description, created_by, notes, items } = req.body;
-    
+
     // Validate product_id
     const product = await Product.findByPk(product_id);
     if (!product) {
       await t.rollback();
       return res.status(400).json({ message: 'Invalid product_id' });
     }
-    
+
     // Validate user_id (created_by)
     const user = await User.findByPk(created_by);
     if (!user) {
       await t.rollback();
       return res.status(400).json({ message: 'Invalid created_by user_id' });
     }
-    
+
     // Check if BOM version already exists for this product
     const existingBom = await BOM.findOne({
       where: {
@@ -136,12 +145,12 @@ exports.createBom = async (req, res) => {
         version
       }
     });
-    
+
     if (existingBom) {
       await t.rollback();
       return res.status(400).json({ message: 'BOM version already exists for this product' });
     }
-    
+
     // Create new BOM
     const newBom = await BOM.create({
       product_id,
@@ -150,7 +159,7 @@ exports.createBom = async (req, res) => {
       created_by,
       notes
     }, { transaction: t });
-    
+
     // Create BOM items if provided
     if (items && Array.isArray(items) && items.length > 0) {
       // Validate and create each item
@@ -164,19 +173,19 @@ exports.createBom = async (req, res) => {
         waste_percent: item.waste_percent || 0,
         notes: item.notes
       }));
-      
+
       await BOMItem.bulkCreate(bomItems, { transaction: t });
     }
-    
+
     await t.commit();
-    
+
     // Get the created BOM with items
-    const createdBom = await this.getBomById({ params: { bom_id: newBom.bom_id } }, { 
-      status: (code) => ({ 
-        json: (data) => data 
-      }) 
+    const createdBom = await this.getBomById({ params: { bom_id: newBom.bom_id } }, {
+      status: (code) => ({
+        json: (data) => data
+      })
     });
-    
+
     return res.status(201).json(createdBom);
   } catch (error) {
     await t.rollback();
@@ -189,18 +198,18 @@ exports.createBom = async (req, res) => {
 exports.updateBom = async (req, res) => {
   // Transaction to ensure data consistency
   const t = await sequelize.transaction();
-  
+
   try {
     const { bom_id } = req.params;
     const { version, description, notes, items } = req.body;
-    
+
     // Find BOM by ID
     const bom = await BOM.findByPk(bom_id);
     if (!bom) {
       await t.rollback();
       return res.status(404).json({ message: 'BOM not found' });
     }
-    
+
     // Check if version already exists for this product (if changing version)
     if (version && version !== bom.version) {
       const existingBom = await BOM.findOne({
@@ -210,19 +219,19 @@ exports.updateBom = async (req, res) => {
           bom_id: { [Op.ne]: bom_id }
         }
       });
-      
+
       if (existingBom) {
         await t.rollback();
         return res.status(400).json({ message: 'BOM version already exists for this product' });
       }
     }
-    
+
     // Update BOM fields
     await bom.update({
       version: version || bom.version,
       notes: notes !== undefined ? notes : bom.notes
     }, { transaction: t });
-    
+
     // Update items if provided
     if (items && Array.isArray(items)) {
       // First, delete existing items
@@ -230,7 +239,7 @@ exports.updateBom = async (req, res) => {
         where: { bom_id },
         transaction: t
       });
-      
+
       // Then create new items
       if (items.length > 0) {
         const bomItems = items.map(item => ({
@@ -243,20 +252,20 @@ exports.updateBom = async (req, res) => {
           waste_percent: item.waste_percent || 0,
           notes: item.notes
         }));
-        
+
         await BOMItem.bulkCreate(bomItems, { transaction: t });
       }
     }
-    
+
     await t.commit();
-    
+
     // Get the updated BOM with items
-    const updatedBom = await this.getBomById({ params: { bom_id } }, { 
-      status: (code) => ({ 
-        json: (data) => data 
-      }) 
+    const updatedBom = await this.getBomById({ params: { bom_id } }, {
+      status: (code) => ({
+        json: (data) => data
+      })
     });
-    
+
     return res.status(200).json(updatedBom);
   } catch (error) {
     await t.rollback();
@@ -271,7 +280,7 @@ exports.deductMaterialsFromBom = async (bom_id, quantity, t) => {
     const bom = await BOM.findByPk(bom_id, {
       include: [{
         model: BOMItem,
-        where: {  }
+        where: {}
       }]
     });
 
@@ -282,7 +291,7 @@ exports.deductMaterialsFromBom = async (bom_id, quantity, t) => {
     // Deduct each material in BOM
     for (const item of bom.BOMItems) {
       const deductQuantity = item.quantity * quantity;
-      
+
       // Update inventory based on item type
       const inventory = await Inventory.findOne({
         where: {
@@ -317,7 +326,7 @@ exports.deductMaterialsFromBom = async (bom_id, quantity, t) => {
   } catch (error) {
     throw error;
   }
-}; 
+};
 
 // Delete BOM by ID
 exports.deleteBom = async (req, res) => {

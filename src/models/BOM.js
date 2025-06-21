@@ -13,7 +13,7 @@ const BOM = sequelize.define('BOM', {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'Products',
+      model: 'products',
       key: 'product_id'
     }
   },
@@ -25,7 +25,7 @@ const BOM = sequelize.define('BOM', {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'Users',
+      model: 'users',
       key: 'user_id'
     }
   },

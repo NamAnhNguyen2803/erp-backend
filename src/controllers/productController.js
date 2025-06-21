@@ -69,6 +69,11 @@ exports.createProduct = async (req, res) => {
       name,
       unit,
       specification,
+      min_stock,
+      max_stock,// Initialize with 0 stock
+      unit_price,
+      supplier,
+      status :'active' 
     });
 
     return res.status(201).json(newProduct);

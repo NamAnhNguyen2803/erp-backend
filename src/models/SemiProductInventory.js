@@ -14,7 +14,7 @@ SemiProductInventory.init({
     allowNull: false,
     references: {
       model: 'semi_finished_products',
-      key: 'id'
+      key: 'semi_product_id'
     }
   },
   warehouse_id: {
@@ -22,7 +22,7 @@ SemiProductInventory.init({
     allowNull: false,
     references: {
       model: 'warehouses',
-      key: 'id'
+      key: 'warehouse_id'
     }
   },
   quantity: {

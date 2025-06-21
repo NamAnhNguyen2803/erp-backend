@@ -1,6 +1,6 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-
+const User = require('./User');
 const SemiBom = sequelize.define('SemiBom', {
   semi_bom_id: {
     type: DataTypes.INTEGER,
@@ -24,7 +24,7 @@ const SemiBom = sequelize.define('SemiBom', {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'Users',
+      model: 'users',
       key: 'user_id'
     }
   },

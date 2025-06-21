@@ -19,7 +19,7 @@ const SemiBomItem = sequelize.define('SemiBomItem', {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'Materials',
+      model: 'materials',
       key: 'material_id'
     }
   },
