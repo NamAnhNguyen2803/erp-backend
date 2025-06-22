@@ -56,7 +56,7 @@ exports.getManufacturingOrderById = async (req, res) => {
         },
         {
           model: ManufacturingOrderDetail,
-          attributes: ['detail_id', 'item_id', 'item_type', 'quantity', 'specification', 'planned_start', 'planned_end', 'priority', 'notes'],
+          attributes: ['detail_id', 'item_id', 'item_type', 'quantity','produced_qty', 'specification', 'planned_start', 'planned_end', 'priority', 'notes'],
         }
       ]
     });
@@ -78,7 +78,6 @@ exports.getManufacturingOrderById = async (req, res) => {
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
-
 
 
 // Create new manufacturing order

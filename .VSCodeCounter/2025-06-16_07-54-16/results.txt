@@ -1,0 +1,110 @@
+Date : 2025-06-16 07:54:16
+Directory : d:\document\project\finale\erp-backend\src
+Total : 78 files,  6169 codes, 514 comments, 880 blanks, all 7563 lines
+
+Languages
++------------+------------+------------+------------+------------+------------+
+| language   | files      | code       | comment    | blank      | total      |
++------------+------------+------------+------------+------------+------------+
+| JavaScript |         78 |      6,169 |        514 |        880 |      7,563 |
++------------+------------+------------+------------+------------+------------+
+
+Directories
++----------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                                               | files      | code       | comment    | blank      | total      |
++----------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                                  |         78 |      6,169 |        514 |        880 |      7,563 |
+| config                                                                                             |          3 |         92 |          3 |          7 |        102 |
+| controllers                                                                                        |         19 |      3,403 |        311 |        562 |      4,276 |
+| helper                                                                                             |          2 |         68 |          6 |          8 |         82 |
+| middleware                                                                                         |          2 |         76 |          8 |         16 |        100 |
+| migrations                                                                                         |          6 |        260 |         33 |         17 |        310 |
+| models                                                                                             |         24 |      1,537 |         35 |        105 |      1,677 |
+| routes                                                                                             |         20 |        222 |         94 |         86 |        402 |
+| services                                                                                           |          2 |        511 |         24 |         79 |        614 |
++----------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++----------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| filename                                                                                           | language   | code       | comment    | blank      | total      |
++----------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| d:\document\project\finale\erp-backend\src\config\config.js                                        | JavaScript |         48 |          0 |          1 |         49 |
+| d:\document\project\finale\erp-backend\src\config\database.js                                      | JavaScript |         30 |          3 |          4 |         37 |
+| d:\document\project\finale\erp-backend\src\config\db.js                                            | JavaScript |         14 |          0 |          2 |         16 |
+| d:\document\project\finale\erp-backend\src\controllers\SemiBomController.js                        | JavaScript |         55 |          0 |          6 |         61 |
+| d:\document\project\finale\erp-backend\src\controllers\authController.js                           | JavaScript |         42 |          1 |          7 |         50 |
+| d:\document\project\finale\erp-backend\src\controllers\bomController.js                            | JavaScript |        263 |         34 |         53 |        350 |
+| d:\document\project\finale\erp-backend\src\controllers\exampleController.js                        | JavaScript |         21 |          0 |          3 |         24 |
+| d:\document\project\finale\erp-backend\src\controllers\inventoryController.js                      | JavaScript |        107 |          4 |          6 |        117 |
+| d:\document\project\finale\erp-backend\src\controllers\inventoryTransactionController.js           | JavaScript |        516 |         27 |         78 |        621 |
+| d:\document\project\finale\erp-backend\src\controllers\manufacturingCostController.js              | JavaScript |         89 |         11 |         14 |        114 |
+| d:\document\project\finale\erp-backend\src\controllers\manufacturingLogController.js               | JavaScript |        122 |         11 |         15 |        148 |
+| d:\document\project\finale\erp-backend\src\controllers\manufacturingOrderController.js             | JavaScript |        212 |         25 |         37 |        274 |
+| d:\document\project\finale\erp-backend\src\controllers\manufacturingOrderDetailController.js       | JavaScript |        199 |         11 |         29 |        239 |
+| d:\document\project\finale\erp-backend\src\controllers\manufacturingPlanController.js              | JavaScript |        235 |         22 |         39 |        296 |
+| d:\document\project\finale\erp-backend\src\controllers\materialController.js                       | JavaScript |        116 |         14 |         21 |        151 |
+| d:\document\project\finale\erp-backend\src\controllers\materialRequirementController.js            | JavaScript |        126 |         15 |         21 |        162 |
+| d:\document\project\finale\erp-backend\src\controllers\materialStatusController.js                 | JavaScript |        326 |         21 |         55 |        402 |
+| d:\document\project\finale\erp-backend\src\controllers\productController.js                        | JavaScript |        105 |          5 |         20 |        130 |
+| d:\document\project\finale\erp-backend\src\controllers\semiFinishedProductController.js            | JavaScript |        105 |         18 |         21 |        144 |
+| d:\document\project\finale\erp-backend\src\controllers\userController.js                           | JavaScript |        111 |         14 |         21 |        146 |
+| d:\document\project\finale\erp-backend\src\controllers\warehouseController.js                      | JavaScript |        101 |         14 |         20 |        135 |
+| d:\document\project\finale\erp-backend\src\controllers\workOrderController.js                      | JavaScript |        552 |         64 |         96 |        712 |
+| d:\document\project\finale\erp-backend\src\helper\digitWorkCodeGenerator.js                        | JavaScript |         25 |          2 |          2 |         29 |
+| d:\document\project\finale\erp-backend\src\helper\inventoryHelper.js                               | JavaScript |         43 |          4 |          6 |         53 |
+| d:\document\project\finale\erp-backend\src\middleware\auth.js                                      | JavaScript |         33 |          0 |          8 |         41 |
+| d:\document\project\finale\erp-backend\src\middleware\authMiddleware.js                            | JavaScript |         43 |          8 |          8 |         59 |
+| d:\document\project\finale\erp-backend\src\migrations\20250522093713-create-manufacturing-plans.js | JavaScript |         67 |          4 |          5 |         76 |
+| d:\document\project\finale\erp-backend\src\migrations\20250522093713-create-users.js               | JavaScript |         63 |          1 |          2 |         66 |
+| d:\document\project\finale\erp-backend\src\migrations\20250522093714-create-products.js            | JavaScript |         55 |          1 |          2 |         58 |
+| d:\document\project\finale\erp-backend\src\migrations\20250522093715-create-materials.js           | JavaScript |         61 |          1 |          2 |         64 |
+| d:\document\project\finale\erp-backend\src\migrations\20250522095132-create-users.js               | JavaScript |          7 |         13 |          3 |         23 |
+| d:\document\project\finale\erp-backend\src\migrations\20250522095150-create-products.js            | JavaScript |          7 |         13 |          3 |         23 |
+| d:\document\project\finale\erp-backend\src\models\BOM.js                                           | JavaScript |         38 |          0 |          2 |         40 |
+| d:\document\project\finale\erp-backend\src\models\BOMItem.js                                       | JavaScript |         55 |          0 |          2 |         57 |
+| d:\document\project\finale\erp-backend\src\models\InventoryItem.js                                 | JavaScript |         54 |          1 |          5 |         60 |
+| d:\document\project\finale\erp-backend\src\models\InventoryTransaction.js                          | JavaScript |         42 |          1 |          3 |         46 |
+| d:\document\project\finale\erp-backend\src\models\ManufacturingCost.js                             | JavaScript |         61 |          1 |          4 |         66 |
+| d:\document\project\finale\erp-backend\src\models\ManufacturingLog.js                              | JavaScript |         62 |          1 |          4 |         67 |
+| d:\document\project\finale\erp-backend\src\models\ManufacturingOrder.js                            | JavaScript |         47 |          0 |          2 |         49 |
+| d:\document\project\finale\erp-backend\src\models\ManufacturingOrderDetail.js                      | JavaScript |        105 |          0 |          2 |        107 |
+| d:\document\project\finale\erp-backend\src\models\ManufacturingPlan.js                             | JavaScript |         58 |          0 |          2 |         60 |
+| d:\document\project\finale\erp-backend\src\models\ManufacturingPlanDetail.js                       | JavaScript |         41 |          0 |          2 |         43 |
+| d:\document\project\finale\erp-backend\src\models\Material.js                                      | JavaScript |         61 |          0 |          2 |         63 |
+| d:\document\project\finale\erp-backend\src\models\MaterialInventory.js                             | JavaScript |         48 |          0 |          3 |         51 |
+| d:\document\project\finale\erp-backend\src\models\MaterialRequirement.js                           | JavaScript |         27 |          0 |          5 |         32 |
+| d:\document\project\finale\erp-backend\src\models\MaterialStatus.js                                | JavaScript |         99 |          0 |          3 |        102 |
+| d:\document\project\finale\erp-backend\src\models\Product.js                                       | JavaScript |         56 |          0 |          3 |         59 |
+| d:\document\project\finale\erp-backend\src\models\ProductInventory.js                              | JavaScript |         47 |          0 |          2 |         49 |
+| d:\document\project\finale\erp-backend\src\models\SemiBom.js                                       | JavaScript |         44 |          0 |          3 |         47 |
+| d:\document\project\finale\erp-backend\src\models\SemiBomItem.js                                   | JavaScript |         53 |          0 |          3 |         56 |
+| d:\document\project\finale\erp-backend\src\models\SemiFinishedProduct.js                           | JavaScript |         61 |          0 |          2 |         63 |
+| d:\document\project\finale\erp-backend\src\models\SemiProductInventory.js                          | JavaScript |         47 |          1 |          3 |         51 |
+| d:\document\project\finale\erp-backend\src\models\User.js                                          | JavaScript |         77 |          1 |          3 |         81 |
+| d:\document\project\finale\erp-backend\src\models\Warehouse.js                                     | JavaScript |         59 |          0 |          2 |         61 |
+| d:\document\project\finale\erp-backend\src\models\WorkOrder.js                                     | JavaScript |        145 |         10 |         11 |        166 |
+| d:\document\project\finale\erp-backend\src\models\index.js                                         | JavaScript |        150 |         19 |         32 |        201 |
+| d:\document\project\finale\erp-backend\src\routes\api.js                                           | JavaScript |          6 |          0 |          2 |          8 |
+| d:\document\project\finale\erp-backend\src\routes\auth.js                                          | JavaScript |          7 |          0 |          2 |          9 |
+| d:\document\project\finale\erp-backend\src\routes\bomRoutes.js                                     | JavaScript |          9 |          6 |          5 |         20 |
+| d:\document\project\finale\erp-backend\src\routes\index.js                                         | JavaScript |         33 |          5 |          3 |         41 |
+| d:\document\project\finale\erp-backend\src\routes\inventoryRoutes.js                               | JavaScript |          9 |          3 |          3 |         15 |
+| d:\document\project\finale\erp-backend\src\routes\inventoryTransactionRoutes.js                    | JavaScript |         10 |          3 |          2 |         15 |
+| d:\document\project\finale\erp-backend\src\routes\manufacturingCostRoutes.js                       | JavaScript |          6 |          4 |          3 |         13 |
+| d:\document\project\finale\erp-backend\src\routes\manufacturingLogRoutes.js                        | JavaScript |          6 |          4 |          3 |         13 |
+| d:\document\project\finale\erp-backend\src\routes\manufacturingOrderDetailRoutes.js                | JavaScript |         12 |          2 |          1 |         15 |
+| d:\document\project\finale\erp-backend\src\routes\manufacturingOrderRoutes.js                      | JavaScript |          9 |          6 |          5 |         20 |
+| d:\document\project\finale\erp-backend\src\routes\manufacturingPlanRoutes.js                       | JavaScript |          8 |          6 |          5 |         19 |
+| d:\document\project\finale\erp-backend\src\routes\materialRequirementRoutes.js                     | JavaScript |          7 |          5 |          4 |         16 |
+| d:\document\project\finale\erp-backend\src\routes\materialRoutes.js                                | JavaScript |          9 |          7 |          7 |         23 |
+| d:\document\project\finale\erp-backend\src\routes\materialStatusRoutes.js                          | JavaScript |         23 |          7 |          8 |         38 |
+| d:\document\project\finale\erp-backend\src\routes\productRoutes.js                                 | JavaScript |          9 |          7 |          6 |         22 |
+| d:\document\project\finale\erp-backend\src\routes\semiFinishedProductRoutes.js                     | JavaScript |          9 |          7 |          6 |         22 |
+| d:\document\project\finale\erp-backend\src\routes\userRoutes.js                                    | JavaScript |          9 |          8 |          6 |         23 |
+| d:\document\project\finale\erp-backend\src\routes\users.js                                         | JavaScript |         17 |          3 |          4 |         24 |
+| d:\document\project\finale\erp-backend\src\routes\warehouseRoutes.js                               | JavaScript |          9 |          7 |          6 |         22 |
+| d:\document\project\finale\erp-backend\src\routes\workOrderRoutes.js                               | JavaScript |         15 |          4 |          5 |         24 |
+| d:\document\project\finale\erp-backend\src\services\BomService.js                                  | JavaScript |        206 |         15 |         32 |        253 |
+| d:\document\project\finale\erp-backend\src\services\InventoryService.js                            | JavaScript |        305 |          9 |         47 |        361 |
+| Total                                                                                              |            |      6,169 |        514 |        880 |      7,563 |
++----------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+

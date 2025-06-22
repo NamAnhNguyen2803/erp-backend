@@ -351,7 +351,19 @@ class WorkOrderController {
         description: `Hoàn thành sản xuất work order ${workOrder.work_code}`,
         user_id: req.user?.user_id || 1
       }, t);
+      // Trong method complete, sau khi importGoodsLogic và trước khi commit transaction
+      await ManufacturingOrderDetail.update({
+        produced_qty: sequelize.literal(`produced_qty + ${completed_qty || workOrder.work_quantity}`)
+      }, {
+        where: { detail_id: workOrder.detail_id },
+        transaction: t
+      });
 
+      // Kiểm tra nếu đã hoàn thành đủ số lượng thì cập nhật status
+      const updatedDetail = await ManufacturingOrderDetail.findByPk(workOrder.detail_id, { transaction: t });
+      if (updatedDetail.produced_qty >= updatedDetail.quantity) {
+        await updatedDetail.update({ status: 'completed' }, { transaction: t });
+      }
       await workOrder.update({
         status: 'completed',
         actual_end: new Date(),
