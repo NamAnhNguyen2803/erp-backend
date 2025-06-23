@@ -15,7 +15,7 @@ const ManufacturingOrder = sequelize.define('ManufacturingOrder', {
     allowNull: false,
     unique: true
   },
-    description: {
+  description: {
     type: DataTypes.TEXT
   },
   start_date: {
@@ -25,7 +25,7 @@ const ManufacturingOrder = sequelize.define('ManufacturingOrder', {
     type: DataTypes.DATE
   },
   status: {
-    type: DataTypes.ENUM('pending','approved', 'in_progress', 'completed', 'cancelled'),
+    type: DataTypes.ENUM('pending', 'approved', 'in_progress', 'completed', 'cancelled'),
     allowNull: false,
     defaultValue: 'pending'
   },
@@ -43,7 +43,8 @@ const ManufacturingOrder = sequelize.define('ManufacturingOrder', {
   }
 }, {
   timestamps: true,
-  tableName: 'ManufacturingOrders'
+  tableName: 'manufacturing_orders',
+  freezeTableName: true
 });
 
 module.exports = ManufacturingOrder; 

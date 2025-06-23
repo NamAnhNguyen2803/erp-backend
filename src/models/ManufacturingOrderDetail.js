@@ -95,7 +95,7 @@ const ManufacturingOrderDetail = sequelize.define('ManufacturingOrderDetail', {
   }
 }, {
   timestamps: true,
-  tableName: 'ManufacturingOrderDetails',
+  tableName: 'manufacturing_order_details',
   indexes: [
     {
       unique: true,

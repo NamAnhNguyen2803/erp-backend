@@ -47,12 +47,13 @@ const ManufacturingPlan = sequelize.define('ManufacturingPlan', {
   }
 }, {
   timestamps: true,
-  tableName: 'ManufacturingPlans',
+  tableName: 'manufacturing_plans',
+  freezeTableName: true,
   indexes: [
     {
       unique: true,
       fields: ['plan_code'],
-      name: 'manufacturing_plan_plan_code_unique'
+      name: 'manufacturing_plans_plan_code_unique'
     }
   ]
 });

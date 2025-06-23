@@ -2,6 +2,7 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const Product = require('./Product');
 const User = require('./User');
+const ManufacturingPlan = require('./ManufacturingPlan');
 
 const BOM = sequelize.define('BOM', {
   bom_id: {
@@ -21,20 +22,28 @@ const BOM = sequelize.define('BOM', {
     type: DataTypes.STRING,
     allowNull: false
   },
-  created_by: {
+  plan_id: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true, // hoặc false nếu bạn muốn bắt buộc liên kết với kế hoạch
     references: {
-      model: 'users',
-      key: 'user_id'
+      model: ManufacturingPlan,
+      key: 'plan_id'
     }
   },
-  notes: {
-    type: DataTypes.TEXT
+  created_by: {
+  type: DataTypes.INTEGER,
+  allowNull: false,
+  references: {
+    model: 'users',
+    key: 'user_id'
   }
+},
+  notes: {
+  type: DataTypes.TEXT
+}
 }, {
   timestamps: true,
-  tableName: 'BOMs'
+    tableName: 'boms'
 });
 
 module.exports = BOM; 

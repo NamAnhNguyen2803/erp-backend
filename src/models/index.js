@@ -53,6 +53,8 @@ const defineAssociations = () => {
     BOM.hasMany(BOMItem, { foreignKey: 'bom_id' });
     BOMItem.belongsTo(Material, { foreignKey: 'material_id' });
     Material.hasMany(BOMItem, { foreignKey: 'material_id' });
+    BOM.belongsTo(ManufacturingPlan, { foreignKey: 'plan_id' });
+    ManufacturingPlan.hasMany(BOM, { foreignKey: 'plan_id' });
 
 
     SemiBomItem.belongsTo(SemiBom, {
@@ -165,9 +167,9 @@ defineAssociations();
 const syncDatabase = async () => {
   try {
     const syncOptions = {
-      alter: true,
+      force: true,
     };
-    await sequelize.sync();
+    await sequelize.sync(syncOptions);
     console.log('Database synchronized successfully');
   } catch (error) {
     console.error('Error synchronizing database:', error);
@@ -177,7 +179,6 @@ const syncDatabase = async () => {
 
 module.exports = {
   sequelize,
-  syncDatabase,
   User,
   Product,
   Material,
@@ -198,4 +199,5 @@ module.exports = {
   MaterialInventory,
   SemiProductInventory,
   MaterialStatus,
+  syncDatabase,
 }; 

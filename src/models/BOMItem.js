@@ -2,7 +2,7 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const BOM = require('./BOM');
 const Product = require('./Product');
-
+const Material = require('./Material')
 const BOMItem = sequelize.define('BOMItem', {
   item_id: {
     type: DataTypes.INTEGER,
@@ -13,7 +13,7 @@ const BOMItem = sequelize.define('BOMItem', {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'BOMs',
+      model: BOM,
       key: 'bom_id'
     }
   },
@@ -21,7 +21,7 @@ const BOMItem = sequelize.define('BOMItem', {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'materials', 
+      model: Material, 
       key: 'material_id',
     }
   },
@@ -51,7 +51,7 @@ const BOMItem = sequelize.define('BOMItem', {
   }
 }, {
   timestamps: true,
-  tableName: 'BOMItems'
+  tableName: 'bom_items'
 });
 
 module.exports = BOMItem; 

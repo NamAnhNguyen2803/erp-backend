@@ -24,8 +24,9 @@ const MaterialRequirement = sequelize.define('MaterialRequirement', {
   },
 
 }, {
-  tableName: 'materialRequirements',
+  tableName: 'material_requirements',
   timestamps: true,
+    freezeTableName: true
 });
 
 module.exports = MaterialRequirement;

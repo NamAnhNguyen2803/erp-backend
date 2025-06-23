@@ -1,5 +1,6 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
+const { table } = require('console');
 
 const SemiBomItem = sequelize.define('SemiBomItem', {
   item_id: {
@@ -11,7 +12,7 @@ const SemiBomItem = sequelize.define('SemiBomItem', {
     type: DataTypes.INTEGER,
     allowNull: false,
     references: {
-      model: 'Semi_BOMs',
+      table: 'semi_boms',
       key: 'semi_bom_id'
     }
   },
@@ -49,7 +50,7 @@ const SemiBomItem = sequelize.define('SemiBomItem', {
   }
 }, {
   timestamps: true,
-  tableName: 'Semi_BOMItems'
+  tableName: 'semi_bom_items'
 });
 
 module.exports = SemiBomItem;

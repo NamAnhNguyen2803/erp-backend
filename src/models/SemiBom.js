@@ -39,7 +39,7 @@ const SemiBom = sequelize.define('SemiBom', {
 }, {
   sequelize,
   modelName: 'SemiBom',
-  tableName: 'Semi_BOMs',
+  tableName: 'semi_boms',
   timestamps: true
 });
 

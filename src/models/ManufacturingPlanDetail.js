@@ -37,7 +37,8 @@ const ManufacturingPlanDetail = sequelize.define('ManufacturingPlanDetail', {
   }
 }, {
   timestamps: true,
-  tableName: 'ManufacturingPlanDetails'
+  tableName: 'manufacturing_plan_details',
+  freezeTableName: true
 });
 
 module.exports = ManufacturingPlanDetail; 
