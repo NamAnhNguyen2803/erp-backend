@@ -530,18 +530,12 @@ class WorkOrderController {
       });
 
       if (!workOrder || !workOrder.ManufacturingOrderDetail) {
-        return res.status(404).json({
-          success: false,
-          message: 'Không tìm thấy WorkOrder hoặc detail.',
-        });
+        return res.status(404).json({ success: false, message: 'Không tìm thấy WorkOrder hoặc detail.' });
       }
 
       const detail = workOrder.ManufacturingOrderDetail;
       if (detail.item_type !== 'product') {
-        return res.status(400).json({
-          success: false,
-          message: 'WorkOrder không phải sản xuất sản phẩm hoàn chỉnh.',
-        });
+        return res.status(400).json({ success: false, message: 'WorkOrder không phải sản xuất sản phẩm hoàn chỉnh.' });
       }
 
       const productId = detail.item_id;
@@ -553,32 +547,39 @@ class WorkOrderController {
       });
 
       if (!bom) {
-        return res.status(404).json({
-          success: false,
-          message: 'Không tìm thấy BOM cho sản phẩm.',
-        });
+        return res.status(404).json({ success: false, message: 'Không tìm thấy BOM cho sản phẩm.' });
       }
 
-      // 3. Lấy danh sách BOM items và nguyên vật liệu liên quan
-      const bomItems = await BOMItem.findAll({
-        where: { bom_id: bom.bom_id },
-        include: [{
-          model: Material,
-          attributes: ['material_id', 'name', 'unit']
-        }],
-      });
+      // 3. Lấy danh sách BOM items
+      const bomItems = await BOMItem.findAll({ where: { bom_id: bom.bom_id } });
 
-      if (!bomItems.length) {
-        return res.status(404).json({
-          success: false,
-          message: 'Không có item nào trong BOM.',
-        });
+      // 4. Lọc ra material items và enrich bằng Material.findByPk
+      const materialItems = await Promise.all(
+        bomItems
+          .filter(item => item.item_type === 'material')
+          .map(async item => {
+            const material = await Material.findByPk(item.reference_id);
+            if (!material) return null;
+
+            return {
+              material_id: material.material_id,
+              material_name: material.name,
+              unit: material.unit,
+              bom_quantity_per_unit: parseFloat(item.quantity),
+              required_quantity: parseFloat(item.quantity) * parseFloat(workOrder.work_quantity),
+              reference_id: item.reference_id,
+            };
+          })
+      );
+
+      const materials = materialItems.filter(Boolean);
+      if (!materials.length) {
+        return res.status(404).json({ success: false, message: 'Không có nguyên vật liệu nào trong BOM.' });
       }
 
-      const productionQty = parseFloat(workOrder.work_quantity);
-      const materialIds = bomItems.map(item => item.material_id);
+      const materialIds = materials.map(mat => mat.material_id);
 
-      // 4. Truy vấn tồn kho nguyên vật liệu tại kho 1 và kho 2
+      // 5. Truy vấn tồn kho nguyên vật liệu tại kho 1 và kho 2
       const inventories = await MaterialInventory.findAll({
         where: {
           material_id: { [Op.in]: materialIds },
@@ -586,76 +587,70 @@ class WorkOrderController {
         }
       });
 
-      // 5. Tạo mapping tồn kho: stockMap[warehouse_id][material_id] = quantity
+      // 6. Tạo mapping tồn kho: stockMap[warehouse_id][material_id] = quantity
       const stockMap = { 1: {}, 2: {} };
       inventories.forEach(inv => {
         const qty = parseFloat(inv.quantity);
         stockMap[inv.warehouse_id][inv.material_id] = qty;
       });
 
-      // 6. Tạo danh sách nguyên vật liệu
-      const materials = bomItems.map(item => {
-        const requiredQty = productionQty * parseFloat(item.quantity);
-        const stock1 = stockMap[1][item.material_id] || 0;
-        const stock2 = stockMap[2][item.material_id] || 0;
+      // 7. Ghép dữ liệu tồn kho vào
+      const finalMaterials = materials.map(mat => {
+        const stock1 = stockMap[1][mat.material_id] || 0;
+        const stock2 = stockMap[2][mat.material_id] || 0;
 
         return {
-          material_id: item.material_id,
-          material_name: item.Material.name,
-          unit: item.Material.unit,
-          bom_quantity_per_unit: parseFloat(item.quantity),
-          required_quantity: requiredQty,
+          ...mat,
           warehouse1_stock: stock1,
           production_stock: stock2,
-          total_stock: stock1 + stock2
+          total_stock: stock1 + stock2,
         };
       });
 
-      // 7. Tạo MaterialRequirement nếu chưa tồn tại
-      const existingRequirements = await MaterialRequirement.findAll({
-        where: { work_id: workOrder.work_id }
-      });
-
+      // 8. Tạo MaterialRequirement nếu chưa tồn tại
+      const existingRequirements = await MaterialRequirement.findAll({ where: { work_id: workOrder.work_id } });
       if (existingRequirements.length === 0) {
-        const requirements = materials.map(mat => ({
+        const requirements = finalMaterials.map(mat => ({
           work_id: workOrder.work_id,
           material_id: mat.material_id,
           required_quantity: mat.required_quantity
         }));
-        await MaterialRequirement.bulkCreate(requirements);
+        await MaterialRequirement.bulkCreate(requirements, {
+          ignoreDuplicates: true
+        });
+
       }
 
-      // 8. Trả kết quả
+      // 9. Trả kết quả
       res.json({
         success: true,
         data: {
           workOrder: {
             work_id: workOrder.work_id,
             work_code: workOrder.work_code,
-            production_quantity: productionQty
+            production_quantity: parseFloat(workOrder.work_quantity)
           },
           bom: {
             bom_id: bom.bom_id,
             product_id: bom.product_id,
             version: bom.version
           },
-          materials,
+          materials: finalMaterials,
           summary: {
-            total_materials: materials.length,
-            ready_in_production: materials.filter(m => m.production_stock >= m.required_quantity).length,
-            ready_in_total: materials.filter(m => m.total_stock >= m.required_quantity).length,
-            missing_materials: materials.filter(m => m.total_stock < m.required_quantity).length
+            total_materials: finalMaterials.length,
+            ready_in_production: finalMaterials.filter(m => m.production_stock >= m.required_quantity).length,
+            ready_in_total: finalMaterials.filter(m => m.total_stock >= m.required_quantity).length,
+            missing_materials: finalMaterials.filter(m => m.total_stock < m.required_quantity).length
           }
         }
       });
+
     } catch (err) {
       console.error('Lỗi getMaterialStatus:', err);
-      res.status(500).json({
-        success: false,
-        message: 'Lỗi server.',
-      });
+      res.status(500).json({ success: false, message: 'Lỗi server.' });
     }
   }
+
 
 
   // Thêm vào workOrderController.js

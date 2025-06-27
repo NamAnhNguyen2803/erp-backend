@@ -12,7 +12,8 @@ const {
 const { Op } = require('sequelize');
 const sequelize = require('../config/database');
 const inventoryHelper = require('../helper/inventoryHelper');
-const { findItemByType } = require('../helper/inventoryHelper');
+const { findItemByType, attachItemNames } = require('../helper/inventoryHelper');
+
 // Helper function to get inventory model based on item type
 const getInventoryModel = (itemType) => {
   switch (itemType) {

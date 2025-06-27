@@ -35,13 +35,13 @@ exports.getAllInventory = async (req, res) => {
   }
 };
 
-  
+
 // Tồn kho theo loại: Nguyên vật liệu
 exports.getInventoryByMaterial = async (req, res) => {
   try {
     const materials = await MaterialInventory.findAll({
       include: [
-        { model: Material },     
+        { model: Material },
         { model: Warehouse }
       ]
     });
@@ -53,13 +53,47 @@ exports.getInventoryByMaterial = async (req, res) => {
   }
 };
 
+
+// controllers/inventoryController.js
+
+exports.getInventoryByMaterialId = async (req, res) => {
+  try {
+    const { material_id } = req.params;
+
+    const inventories = await MaterialInventory.findAll({
+      where: { material_id },
+      include: [
+        {
+          model: Material,
+          attributes: ['material_id', 'code', 'name', 'unit']
+        },
+        {
+          model: Warehouse,
+          attributes: ['warehouse_id', 'name', 'location']
+        }
+      ]
+    });
+
+    res.json({
+      success: true,
+      data: inventories
+    });
+  } catch (err) {
+    console.error('Error getting inventory by material ID:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
 // Tồn kho theo loại: Thành phẩm
 exports.getInventoryByProduct = async (req, res) => {
   try {
     const products = await ProductInventory.findAll({
       include: [
-        { model: Product}, 
-        { model: Warehouse}
+        { model: Product },
+        { model: Warehouse }
       ]
     });
     res.json(products);
@@ -68,12 +102,44 @@ exports.getInventoryByProduct = async (req, res) => {
   }
 };
 
+
+exports.getInventoryByProductId = async (req, res) => {
+  try {
+    const { product_id } = req.params;
+
+    const inventories = await ProductInventory.findAll({
+      where: { product_id },
+      include: [
+        {
+          model: Product,
+          attributes: ['product_id', 'code', 'name', 'unit']
+        },
+        {
+          model: Warehouse,
+          attributes: ['warehouse_id', 'name', 'location']
+        }
+      ]
+    });
+
+    res.json({
+      success: true,
+      data: inventories
+    });
+  } catch (err) {
+    console.error('Error getting inventory by product ID:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
 // Tồn kho theo loại: Bán thành phẩm
 exports.getInventoryBySemiProduct = async (req, res) => {
   try {
     const semiProducts = await SemiProductInventory.findAll({
       include: [
-        { model: SemiFinishedProduct},
+        { model: SemiFinishedProduct },
         { model: Warehouse, as: 'Warehouse' }
       ]
     });
@@ -91,26 +157,26 @@ exports.getInventoryByWarehouse = async (req, res) => {
       ProductInventory.findAll({
         where: { warehouse_id: warehouseId },
         include: [
-          { model: Product},
+          { model: Product },
           { model: Warehouse }
         ]
       }),
       MaterialInventory.findAll({
         where: { warehouse_id: warehouseId },
         include: [
-          { model: Material},
+          { model: Material },
           { model: Warehouse }
         ]
       }),
       SemiProductInventory.findAll({
         where: { warehouse_id: warehouseId },
         include: [
-          { model: SemiFinishedProduct},
-          { model: Warehouse}
+          { model: SemiFinishedProduct },
+          { model: Warehouse }
         ]
       }),
     ]);
-    res.json({materials,semiProducts, products  });
+    res.json({ materials, semiProducts, products });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

@@ -1,4 +1,4 @@
-const { BOM, BOMItem, Product, User, Material, SemiFinishedProduct, Inventory, InventoryTransaction } = require('../models');
+const { BOM, BOMItem, Product, User, Material, SemiFinishedProduct, Inventory, InventoryTransaction, ManufacturingOrder } = require('../models');
 const { Op } = require('sequelize');
 const sequelize = require('../config/database');
 
@@ -28,13 +28,11 @@ exports.getAllBoms = async (req, res) => {
         },
         {
           model: BOMItem,
-          include: [
-            {
-              model: Material,
-              attributes: ['material_id', 'code', 'name']
-            }
-          ]
-        }
+        },
+          {
+          model: ManufacturingOrder,
+          attributes: ['order_id','order_code']
+        },
       ],
       order: [['bom_id', 'DESC']]
     });
@@ -117,52 +115,34 @@ exports.getBomDetails = async (req, res) => {
 
 
 // Create new BOM with items
+
 exports.createBom = async (req, res) => {
-  // Transaction to ensure data consistency
   const t = await sequelize.transaction();
 
   try {
-    const { product_id, version, description, created_by, notes, items } = req.body;
+    let { product_id,  version, description, created_by, notes, items } = req.body;
+    if (!created_by) created_by = 1;
 
-    // Validate product_id
     const product = await Product.findByPk(product_id);
     if (!product) {
       await t.rollback();
       return res.status(400).json({ message: 'Invalid product_id' });
     }
 
-    // Validate user_id (created_by)
     const user = await User.findByPk(created_by);
     if (!user) {
       await t.rollback();
       return res.status(400).json({ message: 'Invalid created_by user_id' });
     }
 
-    // Check if BOM version already exists for this product
-    const existingBom = await BOM.findOne({
-      where: {
-        product_id,
-        version
-      }
-    });
-
+    const existingBom = await BOM.findOne({ where: { product_id, version } });
     if (existingBom) {
       await t.rollback();
       return res.status(400).json({ message: 'BOM version already exists for this product' });
     }
+    const newBom = await BOM.create({ product_id, version, created_by, notes }, { transaction: t });
 
-    // Create new BOM
-    const newBom = await BOM.create({
-      product_id,
-      version,
-
-      created_by,
-      notes
-    }, { transaction: t });
-
-    // Create BOM items if provided
     if (items && Array.isArray(items) && items.length > 0) {
-      // Validate and create each item
       const bomItems = items.map(item => ({
         bom_id: newBom.bom_id,
         material_id: item.material_id,
@@ -178,101 +158,44 @@ exports.createBom = async (req, res) => {
     }
 
     await t.commit();
+    return res.status(201).json({ message: 'BOM created successfully' });
 
-    // Get the created BOM with items
-    const createdBom = await this.getBomById({ params: { bom_id: newBom.bom_id } }, {
-      status: (code) => ({
-        json: (data) => data
-      })
-    });
-
-    return res.status(201).json(createdBom);
   } catch (error) {
     await t.rollback();
-    console.error('Error creating BOM:', error);
-    return res.status(500).json({ message: 'Internal server error' });
+    console.error('❌ Error creating BOM:', error.message, error.stack);
+    return res.status(500).json({ message: error.message || 'Internal server error' });
   }
 };
+
 
 // Update BOM
 exports.updateBom = async (req, res) => {
-  // Transaction to ensure data consistency
   const t = await sequelize.transaction();
-
   try {
-    const { bom_id } = req.params;
-    const { version, description, notes, items } = req.body;
+    const { bom_id, items, order_id, notes } = req.body;
+    console.log(bom_id)
+    // Xóa các BOMItem cũ
+    await BOMItem.destroy({ where: { bom_id }, transaction: t });
 
-    // Find BOM by ID
-    const bom = await BOM.findByPk(bom_id);
-    if (!bom) {
-      await t.rollback();
-      return res.status(404).json({ message: 'BOM not found' });
-    }
-
-    // Check if version already exists for this product (if changing version)
-    if (version && version !== bom.version) {
-      const existingBom = await BOM.findOne({
-        where: {
-          product_id: bom.product_id,
-          version,
-          bom_id: { [Op.ne]: bom_id }
-        }
-      });
-
-      if (existingBom) {
-        await t.rollback();
-        return res.status(400).json({ message: 'BOM version already exists for this product' });
+    // Tạo lại BOMItems
+    if (items && items.length > 0) {
+      for (const item of items) {
+        await BOMItem.create({ ...item, bom_id }, { transaction: t });
       }
     }
 
-    // Update BOM fields
-    await bom.update({
-      version: version || bom.version,
-      notes: notes !== undefined ? notes : bom.notes
-    }, { transaction: t });
-
-    // Update items if provided
-    if (items && Array.isArray(items)) {
-      // First, delete existing items
-      await BOMItem.destroy({
-        where: { bom_id },
-        transaction: t
-      });
-
-      // Then create new items
-      if (items.length > 0) {
-        const bomItems = items.map(item => ({
-          bom_id,
-          material_id: item.material_id,
-          item_type: item.item_type,
-          bom_level: item.bom_level || 1,
-          reference: item.reference,
-          quantity: item.quantity,
-          waste_percent: item.waste_percent || 0,
-          notes: item.notes
-        }));
-
-        await BOMItem.bulkCreate(bomItems, { transaction: t });
-      }
-    }
+    // Cập nhật ghi chú BOM
+    await BOM.update({ bom_id, items, order_id, notes  }, { where: { bom_id }, transaction: t });
 
     await t.commit();
-
-    // Get the updated BOM with items
-    const updatedBom = await this.getBomById({ params: { bom_id } }, {
-      status: (code) => ({
-        json: (data) => data
-      })
-    });
-
-    return res.status(200).json(updatedBom);
+    res.status(200).json({ message: 'BOM updated successfully' });
   } catch (error) {
-    await t.rollback();
+    if (!t.finished) await t.rollback(); // 👈 CHỈ rollback nếu transaction chưa kết thúc
     console.error('Error updating BOM:', error);
-    return res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ message: 'Error updating BOM' });
   }
 };
+
 
 // Deduct materials based on BOM when manufacturing
 exports.deductMaterialsFromBom = async (bom_id, quantity, t) => {

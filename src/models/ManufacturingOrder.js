@@ -10,7 +10,7 @@ const ManufacturingOrder = sequelize.define('ManufacturingOrder', {
     primaryKey: true,
     autoIncrement: true
   },
-  order_number: {
+  order_code: {
     type: DataTypes.STRING(50),
     allowNull: false,
     unique: true

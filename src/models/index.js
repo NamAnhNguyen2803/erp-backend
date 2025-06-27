@@ -1,17 +1,5 @@
 const sequelize = require('../config/database');
 
-const sequelizeOptions = {
-  define: {
-    freezeTableName: true,
-    underscored: false,
-    createdAt: true,
-    updatedAt: true,
-    deletedAt: false
-  }
-};
-
-// Áp dụng cấu hình
-Object.assign(sequelize.options, sequelizeOptions);
 
 // Import models
 const User = require('./User');
@@ -51,10 +39,8 @@ const defineAssociations = () => {
     // BOMItem relationships
     BOMItem.belongsTo(BOM, { foreignKey: 'bom_id' });
     BOM.hasMany(BOMItem, { foreignKey: 'bom_id' });
-    BOMItem.belongsTo(Material, { foreignKey: 'material_id' });
-    Material.hasMany(BOMItem, { foreignKey: 'material_id' });
-    BOM.belongsTo(ManufacturingPlan, { foreignKey: 'plan_id' });
-    ManufacturingPlan.hasMany(BOM, { foreignKey: 'plan_id' });
+    BOM.belongsTo(ManufacturingOrder, { foreignKey: 'order_id' });
+    ManufacturingOrder.hasMany(BOM, { foreignKey: 'order_id' });
 
 
     SemiBomItem.belongsTo(SemiBom, {
@@ -167,9 +153,9 @@ defineAssociations();
 const syncDatabase = async () => {
   try {
     const syncOptions = {
-      force: true,
+      alter: true,
     };
-    await sequelize.sync(syncOptions);
+    await sequelize.sync();
     console.log('Database synchronized successfully');
   } catch (error) {
     console.error('Error synchronizing database:', error);

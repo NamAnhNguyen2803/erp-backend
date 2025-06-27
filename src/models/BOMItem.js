@@ -1,8 +1,6 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 const BOM = require('./BOM');
-const Product = require('./Product');
-const Material = require('./Material')
 const BOMItem = sequelize.define('BOMItem', {
   item_id: {
     type: DataTypes.INTEGER,
@@ -17,18 +15,13 @@ const BOMItem = sequelize.define('BOMItem', {
       key: 'bom_id'
     }
   },
-  material_id: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    references: {
-      model: Material, 
-      key: 'material_id',
-    }
-  },
   item_type: {
-    type: DataTypes.STRING(20),
-    allowNull: false,
-    comment: 'material, semi_product, product'
+    type: DataTypes.ENUM('material', 'semi_product'),
+    allowNull: false
+  },
+  reference_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false
   },
   bom_level: {
     type: DataTypes.INTEGER,

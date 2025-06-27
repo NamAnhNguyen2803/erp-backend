@@ -11,12 +11,10 @@ const MaterialRequirement = sequelize.define('MaterialRequirement', {
   work_id: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    unique: true,
   },
   material_id: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    unique: true,
   },
   required_quantity: {
     type: DataTypes.FLOAT,

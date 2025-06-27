@@ -49,4 +49,47 @@ async function findItemByType(type, id) {
       throw new Error(`Unknown item type: ${type}`);
   }
 }
-module.exports = { inventoryHelper,  findItemByType };
+
+
+
+async function attachItemNames(transactions) {
+  return Promise.all(transactions.map(async (tx) => {
+    try {
+      let itemName = 'Unknown';
+
+      if (tx.item_type === 'material') {
+        const material = await Material.findByPk(tx.item_id, {
+          attributes: ['name'],
+        });
+        itemName = material ? material.name : 'Unknown Material';
+      } else if (tx.item_type === 'semi-product') {
+        const semi = await SemiProduct.findByPk(tx.item_id, {
+          attributes: ['name'],
+        });
+        itemName = semi ? semi.name : 'Unknown Semi-product';
+      }
+      else if (tx.item_type === 'product') {
+        const product = await Product.findByPk(tx.item_id, {
+          attributes: ['name'],
+        });
+        itemName = product ? product.name : 'Unknown Product';
+      }
+      return {
+        ...tx.toJSON(),
+        item_name: itemName,
+      };
+
+
+    } catch (err) {
+      console.error(`Lỗi khi gắn item_name cho transaction ${tx.transaction_id}:`, err);
+      return {
+        ...tx.toJSON(),
+        item_name: 'Error',
+      };
+    }
+  }));
+}
+
+
+
+module.exports = { inventoryHelper, findItemByType, attachItemNames };

@@ -86,7 +86,7 @@ exports.createManufacturingOrder = async (req, res) => {
   const t = await sequelize.transaction();
   
   try {
-    const { order_number, plan_id,  start_date, end_date, status, created_by } = req.body;
+    const { order_code, plan_id,  start_date, end_date, status, created_by } = req.body;
     
     // Validate plan_id if provided
     if (plan_id) {
@@ -104,9 +104,9 @@ exports.createManufacturingOrder = async (req, res) => {
       return res.status(400).json({ message: 'Invalid created_by user_id' });
     }
     
-    // Check if order_number already exists
+    // Check if order_code already exists
     const existingOrder = await ManufacturingOrder.findOne({
-      where: { order_number }
+      where: { order_code }
     });
     
     if (existingOrder) {
@@ -116,7 +116,7 @@ exports.createManufacturingOrder = async (req, res) => {
     
     // Create new manufacturing order
     const newOrder = await ManufacturingOrder.create({
-      order_number,
+      order_code,
       plan_id,
       start_date: start_date ? new Date(start_date) : null,
       end_date: end_date ? new Date(end_date) : null,

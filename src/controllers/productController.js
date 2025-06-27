@@ -1,5 +1,9 @@
 const { Product } = require('../models');
 const { Op } = require('sequelize');
+const BOM = require('../models/BOM');
+const BOMItem = require('../models/BOMItem');
+const Material = require('../models/Material');
+const SemiProduct = require('../models/SemiFinishedProduct');
 
 // Lấy tất cả sản phẩm với phân trang và bộ lọc
 exports.getAllProducts = async (req, res) => {
@@ -41,25 +45,65 @@ exports.getAllProducts = async (req, res) => {
 exports.getProductById = async (req, res) => {
   try {
     const { product_id } = req.params;
-    const product = await Product.findByPk(product_id);
+
+    const product = await Product.findByPk(product_id, {
+      include: [
+        {
+          model: BOM,
+          include: [BOMItem]
+        }
+      ]
+    });
 
     if (!product) {
       return res.status(404).json({ message: 'Không tìm thấy sản phẩm' });
     }
 
-    return res.status(200).json(product);
+    // Gắn thông tin reference vào từng BOMItem
+    const bomItems = product.BOM?.BOMItems || [];
+
+    const resolvedItems = await Promise.all(
+      bomItems.map(async (item) => {
+        let reference = null;
+
+        if (item.item_type === 'material') {
+          reference = await Material.findByPk(item.reference_id, {
+            attributes: ['material_id', 'code', 'name', 'unit']
+          });
+        } else if (item.item_type === 'semi_product') {
+          reference = await SemiProduct.findByPk(item.reference_id, {
+            attributes: ['semi_product_id', 'code', 'name', 'unit']
+          });
+        }
+
+        return {
+          ...item.toJSON(),
+          reference: reference ? reference.toJSON() : null
+        };
+      })
+    );
+
+    // Gắn lại BOMItem mới có reference vào BOM
+    if (product.BOM) {
+      product.BOM.BOMItems = resolvedItems;
+    }
+
+    return res.status(200).json({ success: true, data: product });
+
   } catch (error) {
     console.error('Lỗi khi lấy sản phẩm:', error);
     return res.status(500).json({ message: 'Lỗi máy chủ nội bộ' });
   }
 };
 
+
 // Tạo sản phẩm mới
 exports.createProduct = async (req, res) => {
   try {
-    const { code, name, unit, specification } = req.body;
+    const { code, name, unit, specification, unit_price, supplier, status } = req.body;
 
     const existingProduct = await Product.findOne({ where: { code } });
+
     if (existingProduct) {
       return res.status(400).json({ message: 'Mã sản phẩm đã tồn tại' });
     }
@@ -69,11 +113,11 @@ exports.createProduct = async (req, res) => {
       name,
       unit,
       specification,
-      min_stock,
-      max_stock,// Initialize with 0 stock
+      min_stock: 0,
+      max_stock: 0,
       unit_price,
       supplier,
-      status :'active' 
+      status
     });
 
     return res.status(201).json(newProduct);
@@ -87,7 +131,7 @@ exports.createProduct = async (req, res) => {
 exports.updateProduct = async (req, res) => {
   try {
     const { product_id } = req.params;
-    const { code, name, unit, specification } = req.body;
+    const { code, name, unit, specification, min_stock, max_stock, unit_price, supplier, status } = req.body;
 
     const product = await Product.findByPk(product_id);
     if (!product) {
@@ -102,10 +146,15 @@ exports.updateProduct = async (req, res) => {
     }
 
     await product.update({
-      code: code || product.code,
-      name: name || product.name,
-      unit: unit || product.unit,
-      specification: specification !== undefined ? specification : product.specification,
+      code,
+      name,
+      unit,
+      specification,
+      min_stock,
+      max_stock,
+      unit_price,
+      supplier,
+      status
     });
 
     return res.status(200).json(product);

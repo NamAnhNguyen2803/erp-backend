@@ -16,18 +16,18 @@ const materialStatusRoutes = require('./materialStatusRoutes');
 const inventoryTransactionRoutes = require('./inventoryTransactionRoutes');
 const manufacturingCostRoutes = require('./manufacturingCostRoutes');
 const manufacturingLogRoutes = require('./manufacturingLogRoutes');
- // Đường dẫn cho ManufacturingOrderDetail
 const manufacturingOrderDetailRoutes = require('./manufacturingOrderDetailRoutes');
-// Thêm các route khác ở đây khi cần
+const bomItems= require('./bomItemRoutes')
 
 // API v1 routes
 router.use('/api/v1/users', userRoutes);
 router.use('/api/v1/products', productRoutes);
 router.use('/api/v1/materials', materialRoutes);
-router.use('/api/v1/semi-finished-products', semiFinishedProductRoutes);
+router.use('/api/v1/semi-products', semiFinishedProductRoutes);
 router.use('/api/v1/warehouses', warehouseRoutes);
 router.use('/api/v1/inventory', inventoryRoutes);
 router.use('/api/v1/boms', bomRoutes);
+router.use('/api/v1/bom-items',bomItems);
 router.use('/api/v1/plans', manufacturingPlanRoutes);
 router.use('/api/v1/orders', manufacturingOrderRoutes);
 router.use('/api/v1/order-details', manufacturingOrderDetailRoutes ); 
