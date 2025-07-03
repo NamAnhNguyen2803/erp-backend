@@ -151,16 +151,7 @@ exports.createManufacturingPlan = async (req, res) => {
     }
 
     await t.commit();
-  } catch (error) {
-    if (!t.finished) {
-      await t.rollback();
-    }
-    console.error('Error creating Manufacturing plan:', error);
-    return res.status(500).json({ message: 'Internal server error' });
-  }
 
-  // ✅ Lúc này newPlan vẫn tồn tại
-  try {
     const createdPlan = await ManufacturingPlan.findByPk(newPlan.plan_id, {
       include: [
         {
@@ -181,9 +172,13 @@ exports.createManufacturingPlan = async (req, res) => {
     });
 
     return res.status(201).json(createdPlan);
-  } catch (postQueryError) {
-    console.error('Error fetching created plan:', postQueryError);
-    return res.status(201).json({ message: 'Plan created but failed to fetch details' });
+
+  } catch (error) {
+    if (t && !t.finished) {
+      await t.rollback();
+    }
+    console.error('Error creating Manufacturing plan:', error);
+    return res.status(500).json({ message: 'Internal server error' });
   }
 };
 

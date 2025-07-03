@@ -17,4 +17,6 @@ router.post('/', manufacturingOrderController.createManufacturingOrder);
 router.put('/:order_id', manufacturingOrderController.updateManufacturingOrder);
 
 router.patch('/:order_id/approve', manufacturingOrderController.approveManufacturingOrder);
+router.patch('/:order_id/complete', manufacturingOrderController.completeManufacturingOrder);
+router.patch('/:order_id/cancel', manufacturingOrderController.cancelManufacturingOrder);
 module.exports = router; 

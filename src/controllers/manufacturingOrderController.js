@@ -1,4 +1,5 @@
 const { ManufacturingOrder, ManufacturingPlan,ManufacturingOrderDetail,WorkOrder , User } = require('../models');
+const { generateWorkCode } = require('../helper/digitWorkCodeGenerator');
 const { Op } = require('sequelize');
 const sequelize = require('../config/database');
 const { inventoryHelper } = require('../helper/inventoryHelper');
@@ -86,7 +87,8 @@ exports.createManufacturingOrder = async (req, res) => {
   const t = await sequelize.transaction();
   
   try {
-    const { order_code, plan_id,  start_date, end_date, status, created_by } = req.body;
+    const { plan_id,  start_date, end_date, status, created_by } = req.body;
+    const order_code = generateWorkCode();
     
     // Validate plan_id if provided
     if (plan_id) {
@@ -104,15 +106,7 @@ exports.createManufacturingOrder = async (req, res) => {
       return res.status(400).json({ message: 'Invalid created_by user_id' });
     }
     
-    // Check if order_code already exists
-    const existingOrder = await ManufacturingOrder.findOne({
-      where: { order_code }
-    });
     
-    if (existingOrder) {
-      await t.rollback();
-      return res.status(400).json({ message: 'Order number already exists' });
-    }
     
     // Create new manufacturing order
     const newOrder = await ManufacturingOrder.create({
@@ -269,6 +263,52 @@ exports.approveManufacturingOrder =async (req, res) => {
     return res.status(200).json({ message: 'Manufacturing Order approved successfully', order: mo });
   } catch (error) {
     console.error('Error approving Manufacturing Order:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+exports.completeManufacturingOrder = async (req, res) => {
+  const { order_id } = req.params;
+
+  try {
+    const mo = await ManufacturingOrder.findByPk(order_id);
+    if (!mo) {
+      return res.status(404).json({ message: 'Manufacturing Order not found' });
+    }
+
+    if (mo.status !== 'approved') {
+      return res.status(400).json({ message: `Cannot complete MO with status '${mo.status}'. Only 'approved' allowed.` });
+    }
+
+    mo.status = 'completed';
+    await mo.save();
+
+    return res.status(200).json({ message: 'Manufacturing Order completed successfully', order: mo });
+  } catch (error) {
+    console.error('Error completing Manufacturing Order:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+exports.cancelManufacturingOrder = async (req, res) => {
+  const { order_id } = req.params;
+
+  try {
+    const mo = await ManufacturingOrder.findByPk(order_id);
+    if (!mo) {
+      return res.status(404).json({ message: 'Manufacturing Order not found' });
+    }
+
+    if (mo.status === 'completed' || mo.status === 'cancelled') {
+      return res.status(400).json({ message: `Cannot cancel MO with status '${mo.status}'.` });
+    }
+
+    mo.status = 'cancelled';
+    await mo.save();
+
+    return res.status(200).json({ message: 'Manufacturing Order cancelled successfully', order: mo });
+  } catch (error) {
+    console.error('Error cancelling Manufacturing Order:', error);
     return res.status(500).json({ message: 'Internal server error' });
   }
 }
